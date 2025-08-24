@@ -1,0 +1,826 @@
+{% extends 'base.html' %}
+
+{% block title %}Emotion Detection - DailyNest{% endblock %}
+
+{% block content %}
+<div class="emotion-container">
+    <div class="page-header">
+        <h1><i class="fas fa-smile"></i> Emotion Detection</h1>
+        <p>Detect emotions from your facial expressions and voice patterns using AI technology</p>
+    </div>
+    
+    <div class="detection-modes">
+        <div class="mode-card active" id="faceMode" onclick="switchMode('face')">
+            <div class="mode-icon">
+                <i class="fas fa-camera"></i>
+            </div>
+            <h3>Face Detection</h3>
+            <p>Analyze emotions from facial expressions in real-time</p>
+            <div class="mode-status">
+                <span class="status-dot active"></span>
+                <span>Available</span>
+            </div>
+        </div>
+        
+        <div class="mode-card" id="voiceMode" onclick="switchMode('voice')">
+            <div class="mode-icon">
+                <i class="fas fa-microphone"></i>
+            </div>
+            <h3>Voice Detection</h3>
+            <p>Detect emotions from voice tone and patterns</p>
+            <div class="mode-status">
+                <span class="status-dot active"></span>
+                <span>Available</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="detection-workspace">
+        <div class="detection-area">
+            <div class="camera-section" id="cameraSection">
+                <div class="video-container">
+                    <video id="video" autoplay muted playsinline></video>
+                    <canvas id="canvas" style="display: none;"></canvas>
+                    <div class="video-overlay" id="videoOverlay">
+                        <i class="fas fa-camera fa-3x"></i>
+                        <p>Click "Start Camera" to begin face emotion detection</p>
+                    </div>
+                </div>
+                <div class="camera-controls">
+                    <button id="startCamera" class="control-btn primary">
+                        <i class="fas fa-video"></i>
+                        <span>Start Camera</span>
+                    </button>
+                    <button id="capturePhoto" class="control-btn secondary" style="display: none;">
+                        <i class="fas fa-camera-retro"></i>
+                        <span>Detect Emotion</span>
+                    </button>
+                    <button id="stopCamera" class="control-btn danger" style="display: none;">
+                        <i class="fas fa-stop-circle"></i>
+                        <span>Stop Camera</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="microphone-section" id="microphoneSection" style="display: none;">
+                <div class="audio-visualizer">
+                    <div class="audio-display">
+                        <i class="fas fa-microphone fa-3x" id="micIcon"></i>
+                        <p id="audioStatus">Click "Start Recording" to begin voice emotion detection</p>
+                    </div>
+                    <div class="audio-bars" id="audioBars">
+                        <div class="bar"></div>
+                        <div class="bar"></div>
+                        <div class="bar"></div>
+                        <div class="bar"></div>
+                        <div class="bar"></div>
+                        <div class="bar"></div>
+                        <div class="bar"></div>
+                        <div class="bar"></div>
+                    </div>
+                </div>
+                <div class="audio-controls">
+                    <button id="startRecording" class="control-btn primary">
+                        <i class="fas fa-microphone"></i>
+                        <span>Start Recording</span>
+                    </button>
+                    <button id="stopRecording" class="control-btn danger" style="display: none;">
+                        <i class="fas fa-stop-circle"></i>
+                        <span>Stop & Analyze</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="results-panel">
+            <div class="current-emotion">
+                <h3><i class="fas fa-heart"></i> Current Emotion</h3>
+                <div class="emotion-display">
+                    <div class="emotion-circle" id="emotionCircle">
+                        <div class="emotion-icon" id="emotionIcon">
+                            <i class="fas fa-smile"></i>
+                        </div>
+                    </div>
+                    <div class="emotion-info">
+                        <div class="emotion-label" id="emotionLabel">Ready to detect</div>
+                        <div class="emotion-confidence">
+                            <span>Confidence:</span>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" id="confidenceFill" style="width: 0%"></div>
+                            </div>
+                            <span id="confidenceText">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="emotion-insights">
+                <h4><i class="fas fa-lightbulb"></i> Insights</h4>
+                <div class="insight-text" id="insightText">
+                    Start emotion detection to get personalized insights about your emotional state.
+                </div>
+            </div>
+            
+            <div class="quick-actions">
+                <button class="action-btn" onclick="saveEmotion()">
+                    <i class="fas fa-save"></i>
+                    Save Result
+                </button>
+                <button class="action-btn" onclick="shareEmotion()">
+                    <i class="fas fa-share"></i>
+                    Share
+                </button>
+                <button class="action-btn" onclick="viewHistory()">
+                    <i class="fas fa-history"></i>
+                    View History
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="emotion-history-section">
+        <h3><i class="fas fa-chart-line"></i> Recent Detections</h3>
+        <div class="history-grid" id="historyGrid">
+            <div class="history-placeholder">
+                <i class="fas fa-clock"></i>
+                <p>No recent detections. Start using emotion detection to see your history here.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.emotion-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.page-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.page-header h1 {
+    font-size: 2.5rem;
+    color: var(--calm-blue);
+    margin-bottom: 0.5rem;
+}
+
+.page-header p {
+    font-size: 1.1rem;
+    color: var(--text-light);
+    opacity: 0.8;
+}
+
+.detection-modes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-bottom: 3rem;
+}
+
+.mode-card {
+    background: var(--surface-light);
+    border-radius: var(--border-radius-lg);
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+    border: 3px solid transparent;
+    box-shadow: var(--shadow-md);
+}
+
+.mode-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+}
+
+.mode-card.active {
+    border-color: var(--calm-blue);
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+}
+
+.mode-icon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, var(--calm-blue), var(--gentle-purple));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    font-size: 2rem;
+    color: white;
+}
+
+.mode-card h3 {
+    color: var(--text-light);
+    margin-bottom: 1rem;
+    font-size: 1.3rem;
+}
+
+.mode-card p {
+    color: var(--text-light);
+    opacity: 0.8;
+    margin-bottom: 1.5rem;
+}
+
+.mode-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--soft-green);
+}
+
+.status-dot.active {
+    animation: pulse 2s infinite;
+}
+
+.detection-workspace {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 3rem;
+    margin-bottom: 3rem;
+}
+
+.detection-area {
+    background: var(--surface-light);
+    border-radius: var(--border-radius-lg);
+    padding: 2rem;
+    box-shadow: var(--shadow-md);
+}
+
+.video-container {
+    position: relative;
+    background: #000;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    aspect-ratio: 16/9;
+    margin-bottom: 2rem;
+}
+
+.video-container video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.video-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    text-align: center;
+}
+
+.video-overlay i {
+    margin-bottom: 1rem;
+    opacity: 0.7;
+}
+
+.camera-controls, .audio-controls {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.control-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem 1.5rem;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    min-width: 150px;
+    justify-content: center;
+}
+
+.control-btn.primary {
+    background: var(--calm-blue);
+    color: white;
+}
+
+.control-btn.secondary {
+    background: var(--soft-green);
+    color: white;
+}
+
+.control-btn.danger {
+    background: #ef4444;
+    color: white;
+}
+
+.control-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.audio-visualizer {
+    text-align: center;
+    padding: 3rem 2rem;
+}
+
+.audio-display {
+    margin-bottom: 2rem;
+}
+
+.audio-display i {
+    color: var(--calm-blue);
+    margin-bottom: 1rem;
+}
+
+.audio-bars {
+    display: flex;
+    justify-content: center;
+    align-items: end;
+    gap: 4px;
+    height: 60px;
+    margin-bottom: 2rem;
+}
+
+.bar {
+    width: 8px;
+    background: var(--calm-blue);
+    border-radius: 4px;
+    transition: height 0.1s ease;
+    height: 10px;
+}
+
+.bar.active {
+    animation: audioBar 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes audioBar {
+    0% { height: 10px; }
+    100% { height: 50px; }
+}
+
+.results-panel {
+    background: var(--surface-light);
+    border-radius: var(--border-radius-lg);
+    padding: 2rem;
+    box-shadow: var(--shadow-md);
+    height: fit-content;
+}
+
+.current-emotion h3 {
+    color: var(--text-light);
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.emotion-display {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.emotion-circle {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--calm-blue), var(--gentle-purple));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+
+.emotion-info {
+    flex: 1;
+}
+
+.emotion-label {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-light);
+    margin-bottom: 0.5rem;
+}
+
+.emotion-confidence {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-light);
+}
+
+.confidence-bar {
+    flex: 1;
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.confidence-fill {
+    height: 100%;
+    background: var(--soft-green);
+    transition: width 0.3s ease;
+}
+
+.emotion-insights {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: rgba(99, 102, 241, 0.1);
+    border-radius: var(--border-radius);
+}
+
+.emotion-insights h4 {
+    color: var(--text-light);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.insight-text {
+    color: var(--text-light);
+    line-height: 1.6;
+}
+
+.quick-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.action-btn {
+    flex: 1;
+    padding: 0.75rem;
+    background: var(--surface-light);
+    border: 2px solid var(--calm-blue);
+    color: var(--calm-blue);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    min-width: 100px;
+}
+
+.action-btn:hover {
+    background: var(--calm-blue);
+    color: white;
+}
+
+.emotion-history-section {
+    background: var(--surface-light);
+    border-radius: var(--border-radius-lg);
+    padding: 2rem;
+    box-shadow: var(--shadow-md);
+}
+
+.emotion-history-section h3 {
+    color: var(--text-light);
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.history-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.history-placeholder {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-light);
+    opacity: 0.6;
+}
+
+.history-placeholder i {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+/* Dark theme support */
+body[data-theme="dark"] .mode-card,
+body[data-theme="dark"] .detection-area,
+body[data-theme="dark"] .results-panel,
+body[data-theme="dark"] .emotion-history-section {
+    background: var(--surface-dark);
+}
+
+body[data-theme="dark"] .mode-card h3,
+body[data-theme="dark"] .mode-card p,
+body[data-theme="dark"] .current-emotion h3,
+body[data-theme="dark"] .emotion-label,
+body[data-theme="dark"] .emotion-confidence,
+body[data-theme="dark"] .emotion-insights h4,
+body[data-theme="dark"] .insight-text,
+body[data-theme="dark"] .emotion-history-section h3,
+body[data-theme="dark"] .page-header p {
+    color: var(--text-dark);
+}
+
+@media (max-width: 1024px) {
+    .detection-workspace {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+    
+    .emotion-display {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+    }
+    
+    .emotion-confidence {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 768px) {
+    .emotion-container {
+        padding: 1rem;
+    }
+    
+    .detection-modes {
+        grid-template-columns: 1fr;
+    }
+    
+    .camera-controls, .audio-controls {
+        flex-direction: column;
+    }
+    
+    .control-btn {
+        width: 100%;
+    }
+    
+    .quick-actions {
+        flex-direction: column;
+    }
+}
+</style>
+
+<script>
+let currentMode = 'face';
+let stream = null;
+let mediaRecorder = null;
+let recordedChunks = [];
+
+function switchMode(mode) {
+    currentMode = mode;
+    
+    // Update UI
+    document.querySelectorAll('.mode-card').forEach(card => {
+        card.classList.remove('active');
+    });
+    
+    if (mode === 'face') {
+        document.getElementById('faceMode').classList.add('active');
+        document.getElementById('cameraSection').style.display = 'block';
+        document.getElementById('microphoneSection').style.display = 'none';
+    } else {
+        document.getElementById('voiceMode').classList.add('active');
+        document.getElementById('cameraSection').style.display = 'none';
+        document.getElementById('microphoneSection').style.display = 'block';
+    }
+}
+
+// Camera functionality
+document.getElementById('startCamera').addEventListener('click', async function() {
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const video = document.getElementById('video');
+        video.srcObject = stream;
+        
+        document.getElementById('videoOverlay').style.display = 'none';
+        document.getElementById('startCamera').style.display = 'none';
+        document.getElementById('capturePhoto').style.display = 'inline-flex';
+        document.getElementById('stopCamera').style.display = 'inline-flex';
+    } catch (error) {
+        alert('Camera access denied or not available');
+    }
+});
+
+document.getElementById('capturePhoto').addEventListener('click', function() {
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const context = canvas.getContext('2d');
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0);
+    
+    const imageData = canvas.toDataURL('image/jpeg');
+    detectEmotion({ image: imageData });
+});
+
+document.getElementById('stopCamera').addEventListener('click', function() {
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+    }
+    
+    document.getElementById('videoOverlay').style.display = 'flex';
+    document.getElementById('startCamera').style.display = 'inline-flex';
+    document.getElementById('capturePhoto').style.display = 'none';
+    document.getElementById('stopCamera').style.display = 'none';
+});
+
+// Audio functionality
+document.getElementById('startRecording').addEventListener('click', async function() {
+    try {
+        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(audioStream);
+        recordedChunks = [];
+        
+        mediaRecorder.ondataavailable = function(event) {
+            if (event.data.size > 0) {
+                recordedChunks.push(event.data);
+            }
+        };
+        
+        mediaRecorder.onstop = function() {
+            const blob = new Blob(recordedChunks, { type: 'audio/wav' });
+            const reader = new FileReader();
+            reader.onloadend = function() {
+                detectEmotion({ audio: reader.result });
+            };
+            reader.readAsDataURL(blob);
+        };
+        
+        mediaRecorder.start();
+        
+        document.getElementById('audioStatus').textContent = 'Recording... Speak naturally';
+        document.getElementById('micIcon').style.color = '#ef4444';
+        document.getElementById('startRecording').style.display = 'none';
+        document.getElementById('stopRecording').style.display = 'inline-flex';
+        
+        // Animate audio bars
+        document.querySelectorAll('.bar').forEach((bar, index) => {
+            setTimeout(() => {
+                bar.classList.add('active');
+            }, index * 100);
+        });
+        
+    } catch (error) {
+        alert('Microphone access denied or not available');
+    }
+});
+
+document.getElementById('stopRecording').addEventListener('click', function() {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+    }
+    
+    document.getElementById('audioStatus').textContent = 'Processing audio...';
+    document.getElementById('micIcon').style.color = 'var(--calm-blue)';
+    document.getElementById('startRecording').style.display = 'inline-flex';
+    document.getElementById('stopRecording').style.display = 'none';
+    
+    // Stop audio bar animation
+    document.querySelectorAll('.bar').forEach(bar => {
+        bar.classList.remove('active');
+    });
+});
+
+function detectEmotion(data) {
+    updateEmotionDisplay('Processing...', 0, 'analyzing');
+    
+    fetch('/detect-emotion/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            const emotion = currentMode === 'face' ? result.face_emotion : result.voice_emotion;
+            const confidence = result.confidence === 'high' ? 85 : 60;
+            updateEmotionDisplay(emotion, confidence, emotion);
+            addToHistory(emotion, confidence, currentMode);
+            updateInsights(emotion);
+        } else {
+            updateEmotionDisplay('Detection failed', 0, 'neutral');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        updateEmotionDisplay('Error occurred', 0, 'neutral');
+    });
+}
+
+function updateEmotionDisplay(emotion, confidence, iconType) {
+    document.getElementById('emotionLabel').textContent = emotion;
+    document.getElementById('confidenceFill').style.width = confidence + '%';
+    document.getElementById('confidenceText').textContent = confidence + '%';
+    
+    const iconMap = {
+        'happy': 'fa-smile',
+        'sad': 'fa-frown',
+        'angry': 'fa-angry',
+        'surprised': 'fa-surprise',
+        'fearful': 'fa-grimace',
+        'disgusted': 'fa-meh-blank',
+        'neutral': 'fa-meh',
+        'analyzing': 'fa-spinner fa-spin'
+    };
+    
+    const icon = document.getElementById('emotionIcon').querySelector('i');
+    icon.className = `fas ${iconMap[iconType] || 'fa-meh'}`;
+}
+
+function addToHistory(emotion, confidence, mode) {
+    const historyGrid = document.getElementById('historyGrid');
+    const placeholder = historyGrid.querySelector('.history-placeholder');
+    if (placeholder) {
+        placeholder.remove();
+    }
+    
+    const historyItem = document.createElement('div');
+    historyItem.className = 'history-item';
+    historyItem.innerHTML = `
+        <div class="history-emotion">${emotion}</div>
+        <div class="history-confidence">${confidence}%</div>
+        <div class="history-mode">${mode}</div>
+        <div class="history-time">${new Date().toLocaleTimeString()}</div>
+    `;
+    
+    historyGrid.insertBefore(historyItem, historyGrid.firstChild);
+}
+
+function updateInsights(emotion) {
+    const insights = {
+        'happy': 'Great to see you feeling positive! This is a wonderful emotional state that can boost creativity and social connections.',
+        'sad': 'It\'s okay to feel sad sometimes. Consider talking to someone you trust or engaging in activities that usually make you feel better.',
+        'angry': 'Feeling angry is natural. Try some deep breathing exercises or physical activity to help manage these feelings.',
+        'surprised': 'Surprise can be exciting! This emotion often indicates you\'re open to new experiences.',
+        'neutral': 'A calm, neutral state can be very peaceful and is perfect for focused activities.',
+        'fearful': 'If you\'re feeling anxious, try grounding techniques like focusing on your breathing or surroundings.',
+        'disgusted': 'This emotion helps us avoid things that might be harmful. Trust your instincts.'
+    };
+    
+    document.getElementById('insightText').textContent = insights[emotion] || 'Keep monitoring your emotions to better understand your patterns.';
+}
+
+function saveEmotion() {
+    alert('Emotion saved to your personal history!');
+}
+
+function shareEmotion() {
+    alert('Sharing functionality coming soon!');
+}
+
+function viewHistory() {
+    window.location.href = '/emotion-history/';
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    switchMode('face');
+});
+</script>
+{% endblock %}

@@ -1,0 +1,739 @@
+{% extends 'base.html' %}
+
+{% block title %}DailyNest - Home{% endblock %}
+
+{% block extra_css %}
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --accent-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            --warning-gradient: linear-gradient(135deg, #fce38a 0%, #f38181 100%);
+            
+            --calm-blue: #6366f1;
+            --soft-green: #10b981;
+            --gentle-purple: #8b5cf6;
+            --warm-orange: #f59e0b;
+            --soothing-teal: #06b6d4;
+            
+            --bg-light: #f8fafc;
+            --bg-dark: #0f172a;
+            --surface-light: #ffffff;
+            --surface-dark: #1e293b;
+            --text-light: #1e293b;
+            --text-dark: #f1f5f9;
+            
+            --border-radius: 16px;
+            --border-radius-lg: 24px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            color: var(--text-light);
+            background: var(--bg-light);
+            overflow-x: hidden;
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            position: relative;
+            padding: 2rem;
+            text-align: center;
+            color: white;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><defs><radialGradient id="a" cx="50%" cy="0%"><stop offset="0%" stop-color="rgba(255,255,255,0.1)"/><stop offset="100%" stop-color="rgba(255,255,255,0)"/></radialGradient></defs><rect width="100%" height="100%" fill="url(%23a)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+            animation: fadeInUp 1s ease-out;
+        }
+
+        .hero h1 {
+            font-family: 'Poppins', sans-serif;
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            line-height: 1.2;
+        }
+
+        .hero p {
+            font-size: clamp(1.1rem, 3vw, 1.5rem);
+            margin-bottom: 3rem;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .cta-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1.25rem 2.5rem;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            text-decoration: none;
+            border-radius: var(--border-radius-lg);
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: var(--transition);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: var(--transition);
+        }
+
+        .cta-button:hover::before {
+            left: 100%;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-xl);
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Features Section */
+        .features {
+            padding: 6rem 2rem;
+            background: var(--bg-light);
+        }
+
+        .features-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .features h2 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 3rem;
+            text-align: center;
+            margin-bottom: 4rem;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 3rem;
+        }
+
+        .feature-card {
+            background: var(--surface-light);
+            padding: 3rem 2rem;
+            border-radius: var(--border-radius-lg);
+            text-align: center;
+            transition: var(--transition);
+            box-shadow: var(--shadow-md);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--primary-gradient);
+            transform: scaleX(0);
+            transition: var(--transition);
+        }
+
+        .feature-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .feature-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 2rem;
+            background: var(--primary-gradient);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+            transition: var(--transition);
+        }
+
+        .feature-card:nth-child(2) .feature-icon {
+            background: var(--secondary-gradient);
+        }
+
+        .feature-card:nth-child(3) .feature-icon {
+            background: var(--accent-gradient);
+        }
+
+        .feature-card:nth-child(4) .feature-icon {
+            background: var(--success-gradient);
+        }
+
+        .feature-card:hover .feature-icon {
+            transform: scale(1.1) rotate(10deg);
+        }
+
+        .feature-card h3 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--text-light);
+        }
+
+        .feature-card p {
+            color: #64748b;
+            line-height: 1.7;
+        }
+
+        /* Stats Section */
+        .stats {
+            background: var(--primary-gradient);
+            color: white;
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+
+        .stats-container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 3rem;
+        }
+
+        .stat-item {
+            animation: countUp 2s ease-out;
+        }
+
+        .stat-number {
+            font-family: 'Poppins', sans-serif;
+            font-size: 3rem;
+            font-weight: 700;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin-top: 0.5rem;
+        }
+
+        /* How It Works Section */
+        .how-it-works {
+            padding: 6rem 2rem;
+            background: var(--bg-light);
+        }
+
+        .how-it-works-container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .how-it-works h2 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 3rem;
+            text-align: center;
+            margin-bottom: 4rem;
+            background: var(--secondary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 3rem;
+        }
+
+        .step {
+            text-align: center;
+            position: relative;
+        }
+
+        .step-number {
+            width: 60px;
+            height: 60px;
+            background: var(--primary-gradient);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0 auto 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .step::before {
+            content: '';
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary-gradient));
+            transform: translateX(-50%);
+            z-index: 0;
+        }
+
+        .step:last-child::before {
+            display: none;
+        }
+
+        .step h3 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            color: var(--text-light);
+        }
+
+        .step p {
+            color: #64748b;
+            line-height: 1.7;
+        }
+
+        /* CTA Section */
+        .final-cta {
+            background: var(--accent-gradient);
+            color: white;
+            text-align: center;
+            padding: 6rem 2rem;
+        }
+
+        .final-cta h2 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .final-cta p {
+            font-size: 1.2rem;
+            margin-bottom: 3rem;
+            opacity: 0.9;
+        }
+
+        .final-cta-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1.5rem 3rem;
+            background: white;
+            color: var(--calm-blue);
+            text-decoration: none;
+            border-radius: var(--border-radius-lg);
+            font-weight: 700;
+            font-size: 1.2rem;
+            transition: var(--transition);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .final-cta-button:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes countUp {
+            from { transform: scale(0); }
+            to { transform: scale(1); }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .floating {
+            animation: float 6s ease-in-out infinite;
+        }
+
+        /* Dark Theme */
+        body[data-theme="dark"] {
+            background: var(--bg-dark);
+            color: var(--text-dark);
+        }
+
+        body[data-theme="dark"] .features {
+            background: var(--bg-dark);
+        }
+
+        body[data-theme="dark"] .feature-card {
+            background: var(--surface-dark);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        body[data-theme="dark"] .feature-card h3 {
+            color: var(--text-dark);
+        }
+
+        body[data-theme="dark"] .how-it-works {
+            background: var(--bg-dark);
+        }
+
+        body[data-theme="dark"] .step h3 {
+            color: var(--text-dark);
+        }
+
+        /* High Contrast Theme */
+        body[data-theme="high-contrast"] {
+            background: #000000;
+            color: #ffffff;
+        }
+
+        body[data-theme="high-contrast"] .feature-card {
+            background: #000000;
+            border: 2px solid #ffffff;
+        }
+
+        body[data-theme="high-contrast"] .feature-card h3 {
+            color: #ffffff;
+        }
+
+        body[data-theme="high-contrast"] .cta-button {
+            background: #ffffff;
+            color: #000000;
+            border: 2px solid #ffffff;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .hero {
+                padding: 1rem;
+                min-height: 80vh;
+            }
+
+            .cta-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .features {
+                padding: 4rem 1rem;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+
+            .feature-card {
+                padding: 2rem 1.5rem;
+            }
+
+            .stats {
+                padding: 3rem 1rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 2rem;
+            }
+
+            .how-it-works {
+                padding: 4rem 1rem;
+            }
+
+            .steps {
+                grid-template-columns: 1fr;
+            }
+
+            .step::before {
+                display: none;
+            }
+
+            .final-cta {
+                padding: 4rem 1rem;
+            }
+        }
+
+        /* Accessibility */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        body[data-reduce-animations="true"] * {
+            transition: none !important;
+            animation: none !important;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Welcome to DailyNest</h1>
+            <p>Your personal emotion-aware assistant designed with care for everyone, especially those with autism. Experience technology that understands and adapts to your emotional needs.</p>
+            
+            <div class="cta-buttons">
+                <a href="/emotion/" class="cta-button">
+                    <i class="fas fa-smile"></i>
+                    Check Your Emotions
+                </a>
+                <a href="/chat/" class="cta-button">
+                    <i class="fas fa-comments"></i>
+                    Start Chatting
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="features-container">
+            <h2>Powerful Features for Everyone</h2>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon floating">
+                        <i class="fas fa-camera"></i>
+                    </div>
+                    <h3>Face Emotion Detection</h3>
+                    <p>Advanced AI using MediaPipe and neural networks to accurately detect emotions from facial expressions in real-time.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon floating" style="animation-delay: 0.5s;">
+                        <i class="fas fa-microphone"></i>
+                    </div>
+                    <h3>Voice Emotion Analysis</h3>
+                    <p>Sophisticated audio processing to understand emotions from voice tone, pitch, and speech patterns.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon floating" style="animation-delay: 1s;">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <h3>AI-Powered Chat</h3>
+                    <p>Intelligent chatbot powered by LangChain that adapts responses based on your current emotional state.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon floating" style="animation-delay: 1.5s;">
+                        <i class="fas fa-universal-access"></i>
+                    </div>
+                    <h3>Autism-Friendly Design</h3>
+                    <p>Carefully crafted interface with accessibility features, customizable themes, and sensory-friendly options.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats">
+        <div class="stats-container">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-number">95%</span>
+                    <div class="stat-label">Emotion Detection Accuracy</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">24/7</span>
+                    <div class="stat-label">Available Support</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">100%</span>
+                    <div class="stat-label">Privacy Protected</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">∞</span>
+                    <div class="stat-label">Personalized Care</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section class="how-it-works">
+        <div class="how-it-works-container">
+            <h2>How DailyNest Works</h2>
+            
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <h3>Detect Emotions</h3>
+                    <p>Our AI analyzes your facial expressions and voice to understand your current emotional state.</p>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <h3>Personalize Experience</h3>
+                    <p>The system adapts its responses and interface based on your emotions and preferences.</p>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <h3>Supportive Interaction</h3>
+                    <p>Engage in meaningful conversations with our emotion-aware chatbot that truly understands you.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Final CTA Section -->
+    <section class="final-cta">
+        <h2>Ready to Start Your Journey?</h2>
+        <p>Join thousands of users who have found comfort and support with DailyNest. Experience technology that truly cares.</p>
+        <a href="/emotion/" class="final-cta-button">
+            <i class="fas fa-rocket"></i>
+            Get Started Now
+        </a>
+    </section>
+
+    <script>
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Animate elements on scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.animation = 'fadeInUp 0.8s ease-out forwards';
+                }
+            });
+        }, observerOptions);
+
+        // Observe all feature cards and steps
+        document.querySelectorAll('.feature-card, .step').forEach(el => {
+            observer.observe(el);
+        });
+
+        // Counter animation for stats
+        const statNumbers = document.querySelectorAll('.stat-number');
+        const statsObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const target = entry.target;
+                    const finalNumber = target.textContent;
+                    
+                    if (!isNaN(finalNumber)) {
+                        let current = 0;
+                        const increment = finalNumber / 50;
+                        const timer = setInterval(() => {
+                            current += increment;
+                            if (current >= finalNumber) {
+                                target.textContent = finalNumber;
+                                clearInterval(timer);
+                            } else {
+                                target.textContent = Math.floor(current);
+                            }
+                        }, 40);
+                    }
+                }
+            });
+        });
+
+        statNumbers.forEach(stat => {
+            if (!isNaN(stat.textContent)) {
+                statsObserver.observe(stat);
+            }
+        });
+
+        // Theme handling
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        const savedFontSize = localStorage.getItem('fontSize') || 'medium';
+        const savedReduceAnimations = localStorage.getItem('reduceAnimations') === 'true';
+
+        document.body.dataset.theme = savedTheme;
+        document.body.dataset.fontSize = savedFontSize;
+        document.body.dataset.reduceAnimations = savedReduceAnimations;
+
+        // Parallax effect for hero
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const hero = document.querySelector('.hero');
+            if (hero) {
+                hero.style.transform = `translateY(${scrolled * 0.5}px)`;
+            }
+        });
+    </script>
+{% endblock %}

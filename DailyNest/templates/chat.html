@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Chat{% endblock %}
+{% block css_file %}chat.css{% endblock %}
+{% block js_file %}chat.js{% endblock %}
+
+{% block content %}
+<div class="chat-container">
+    <h1>Emotion-Aware Chat</h1>
+    
+    <div class="chat-wrapper">
+        <div class="chat-messages" id="chatMessages">
+            <!-- Messages will appear here -->
+        </div>
+        
+        <div class="chat-input">
+            <input type="text" id="messageInput" placeholder="Type your message..." 
+                   aria-label="Type your message" maxlength="500">
+            <button id="sendMessage" class="send-button" type="button">
+                <i class="fas fa-paper-plane"></i>
+                <span class="sr-only">Send message</span>
+            </button>
+        </div>
+    </div>
+    
+    <div class="current-emotion">
+        <p>Current Emotion Context:</p>
+        <div class="emotion-indicators">
+            <span id="currentFaceEmotion"><i class="fas fa-camera"></i> -</span>
+            <span id="currentVoiceEmotion"><i class="fas fa-microphone"></i> -</span>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,448 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - DailyNest{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="welcome-section">
+        <h1>Welcome to DailyNest</h1>
+        <p>Your personal emotion-aware assistant designed with autism-friendly features</p>
+    </div>
+
+    <div class="features-grid">
+        <div class="feature-card" onclick="window.location.href='/emotion/'">
+            <div class="feature-icon">
+                <i class="fas fa-smile"></i>
+            </div>
+            <h3>Emotion Detection</h3>
+            <p>Detect emotions from your face and voice using AI technology</p>
+            <div class="feature-status">
+                <span class="status-indicator active"></span>
+                <span>Ready to use</span>
+            </div>
+        </div>
+
+        <div class="feature-card" onclick="window.location.href='/chat/'">
+            <div class="feature-icon">
+                <i class="fas fa-comments"></i>
+            </div>
+            <h3>Emotion-Aware Chat</h3>
+            <p>Chat with an AI assistant that understands your emotional state</p>
+            <div class="feature-status">
+                <span class="status-indicator active"></span>
+                <span>Ready to use</span>
+            </div>
+        </div>
+
+        <div class="feature-card" onclick="showEmotionHistory()">
+            <div class="feature-icon">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <h3>Emotion History</h3>
+            <p>Track your emotional patterns over time</p>
+            <div class="feature-status">
+                <span class="status-indicator active"></span>
+                <span>View history</span>
+            </div>
+        </div>
+
+        <div class="feature-card" onclick="showAccessibilityInfo()">
+            <div class="feature-icon">
+                <i class="fas fa-universal-access"></i>
+            </div>
+            <h3>Accessibility Features</h3>
+            <p>Customize the interface for your needs</p>
+            <div class="feature-status">
+                <span class="status-indicator active"></span>
+                <span>Fully customizable</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="quick-actions">
+        <h2>Quick Actions</h2>
+        <div class="action-buttons">
+            <button class="action-btn primary" onclick="startEmotionDetection()">
+                <i class="fas fa-camera"></i>
+                Start Emotion Detection
+            </button>
+            <button class="action-btn secondary" onclick="openChat()">
+                <i class="fas fa-message"></i>
+                Open Chat
+            </button>
+            <button class="action-btn tertiary" onclick="document.getElementById('settingsBtn').click()">
+                <i class="fas fa-cog"></i>
+                Settings
+            </button>
+        </div>
+    </div>
+
+    <div class="system-status">
+        <h3>System Status</h3>
+        <div class="status-grid">
+            <div class="status-item">
+                <span class="status-label">Face Detection:</span>
+                <span class="status-value" id="faceDetectionStatus">Checking...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Voice Analysis:</span>
+                <span class="status-value" id="voiceAnalysisStatus">Checking...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">AI Chat:</span>
+                <span class="status-value" id="chatStatus">Checking...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Database:</span>
+                <span class="status-value" id="databaseStatus">Connected</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.dashboard-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.welcome-section {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.welcome-section h1 {
+    font-size: 3rem;
+    color: var(--calm-blue);
+    margin-bottom: 1rem;
+}
+
+.welcome-section p {
+    font-size: 1.2rem;
+    color: var(--text-light);
+    opacity: 0.8;
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+    margin-bottom: 3rem;
+}
+
+.feature-card {
+    background: var(--surface-light);
+    border-radius: var(--border-radius-lg);
+    padding: 2rem;
+    box-shadow: var(--shadow-md);
+    transition: var(--transition);
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--calm-blue);
+}
+
+.feature-icon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, var(--calm-blue), var(--gentle-purple));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    font-size: 2rem;
+    color: white;
+}
+
+.feature-card h3 {
+    font-size: 1.5rem;
+    color: var(--text-light);
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.feature-card p {
+    color: var(--text-light);
+    opacity: 0.8;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+}
+
+.feature-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--soft-green);
+}
+
+.status-indicator.active {
+    background: var(--soft-green);
+    animation: pulse 2s infinite;
+}
+
+.quick-actions {
+    margin-bottom: 3rem;
+}
+
+.quick-actions h2 {
+    color: var(--text-light);
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.action-btn {
+    padding: 1rem 2rem;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.action-btn.primary {
+    background: var(--calm-blue);
+    color: white;
+}
+
+.action-btn.secondary {
+    background: var(--soft-green);
+    color: white;
+}
+
+.action-btn.tertiary {
+    background: var(--gentle-purple);
+    color: white;
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.system-status {
+    background: var(--surface-light);
+    border-radius: var(--border-radius-lg);
+    padding: 2rem;
+    box-shadow: var(--shadow-md);
+}
+
+.system-status h3 {
+    color: var(--text-light);
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.status-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: rgba(99, 102, 241, 0.1);
+    border-radius: var(--border-radius);
+}
+
+.status-label {
+    font-weight: 600;
+    color: var(--text-light);
+}
+
+.status-value {
+    color: var(--soft-green);
+    font-weight: 500;
+}
+
+/* Dark theme support */
+body[data-theme="dark"] .feature-card,
+body[data-theme="dark"] .system-status {
+    background: var(--surface-dark);
+}
+
+body[data-theme="dark"] .feature-card h3,
+body[data-theme="dark"] .feature-card p,
+body[data-theme="dark"] .welcome-section p,
+body[data-theme="dark"] .system-status h3,
+body[data-theme="dark"] .status-label {
+    color: var(--text-dark);
+}
+
+body[data-theme="dark"] .welcome-section h1,
+body[data-theme="dark"] .quick-actions h2 {
+    color: var(--calm-blue);
+}
+
+@media (max-width: 768px) {
+    .dashboard-container {
+        padding: 1rem;
+    }
+    
+    .welcome-section h1 {
+        font-size: 2rem;
+    }
+    
+    .features-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .action-btn {
+        width: 100%;
+        max-width: 300px;
+        justify-content: center;
+    }
+}
+</style>
+
+<script>
+function startEmotionDetection() {
+    window.location.href = '/emotion/';
+}
+
+function openChat() {
+    window.location.href = '/chat/';
+}
+
+function showEmotionHistory() {
+    fetch('/emotion-history/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.emotions && data.emotions.length > 0) {
+                let historyHtml = '<h3>Recent Emotions:</h3><ul>';
+                data.emotions.slice(0, 10).forEach(emotion => {
+                    const date = new Date(emotion.timestamp).toLocaleString();
+                    historyHtml += `<li>${date}: Face: ${emotion.face_emotion || 'N/A'}, Voice: ${emotion.voice_emotion || 'N/A'}</li>`;
+                });
+                historyHtml += '</ul>';
+                
+                const modal = document.createElement('div');
+                modal.innerHTML = `
+                    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+                        <div style="background: var(--surface-light); padding: 2rem; border-radius: var(--border-radius-lg); max-width: 500px; max-height: 70vh; overflow-y: auto;">
+                            ${historyHtml}
+                            <button onclick="this.closest('div').remove()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: var(--calm-blue); color: white; border: none; border-radius: var(--border-radius); cursor: pointer;">Close</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            } else {
+                alert('No emotion history found. Try using the emotion detection feature first!');
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching emotion history:', error);
+            alert('Unable to load emotion history. Please try again later.');
+        });
+}
+
+function showAccessibilityInfo() {
+    const modal = document.createElement('div');
+    modal.innerHTML = `
+        <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+            <div style="background: var(--surface-light); padding: 2rem; border-radius: var(--border-radius-lg); max-width: 600px; max-height: 70vh; overflow-y: auto;">
+                <h3>Accessibility Features</h3>
+                <ul style="text-align: left; line-height: 1.8;">
+                    <li><strong>Theme Options:</strong> Light, Dark, and High Contrast themes</li>
+                    <li><strong>Font Size:</strong> Adjustable text size (Small, Medium, Large)</li>
+                    <li><strong>Reduced Animations:</strong> Option to minimize motion for sensitivity</li>
+                    <li><strong>Clear Navigation:</strong> Simple, consistent interface design</li>
+                    <li><strong>Autism-Friendly Colors:</strong> Calming color palette</li>
+                    <li><strong>Keyboard Navigation:</strong> Full keyboard accessibility support</li>
+                    <li><strong>Screen Reader Support:</strong> ARIA labels and semantic HTML</li>
+                </ul>
+                <p style="margin-top: 1rem; font-style: italic;">Use the settings button (⚙️) to customize these features!</p>
+                <button onclick="this.closest('div').remove()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: var(--calm-blue); color: white; border: none; border-radius: var(--border-radius); cursor: pointer;">Close</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Check system status on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if emotion detection is working
+    fetch('/detect-emotion/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({test: true})
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('faceDetectionStatus').textContent = 'Available';
+        document.getElementById('voiceAnalysisStatus').textContent = 'Available';
+    })
+    .catch(error => {
+        document.getElementById('faceDetectionStatus').textContent = 'Limited (fallback mode)';
+        document.getElementById('voiceAnalysisStatus').textContent = 'Limited (fallback mode)';
+    });
+    
+    // Check chat functionality
+    fetch('/chat-message/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({message: 'test', test: true})
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('chatStatus').textContent = 'Available';
+    })
+    .catch(error => {
+        document.getElementById('chatStatus').textContent = 'Fallback mode';
+    });
+});
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

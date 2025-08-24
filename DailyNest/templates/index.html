@@ -1,0 +1,105 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DailyNest - Autism-Friendly Assistant</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body data-theme="{{ preferences.theme }}" data-font-size="{{ preferences.font_size }}" 
+      data-reduce-animations="{{ preferences.reduce_animations|lower }}"
+      data-high-contrast="{{ preferences.high_contrast_mode|lower }}">
+    
+    <header>
+        <h1><i class="fas fa-home"></i> DailyNest</h1>
+        <nav>
+            <button id="settingsButton" aria-label="Settings">
+                <i class="fas fa-cog"></i>
+            </button>
+        </nav>
+    </header>
+
+    <div id="settingsPanel" class="hidden">
+        <h2>Accessibility Settings</h2>
+        <div class="setting-group">
+            <label for="theme">Theme:</label>
+            <select id="theme" name="theme">
+                <option value="light" {% if preferences.theme == 'light' %}selected{% endif %}>Light</option>
+                <option value="dark" {% if preferences.theme == 'dark' %}selected{% endif %}>Dark</option>
+                <option value="high-contrast" {% if preferences.theme == 'high-contrast' %}selected{% endif %}>High Contrast</option>
+            </select>
+        </div>
+
+        <div class="setting-group">
+            <label for="fontSize">Font Size:</label>
+            <select id="fontSize" name="fontSize">
+                <option value="small" {% if preferences.font_size == 'small' %}selected{% endif %}>Small</option>
+                <option value="medium" {% if preferences.font_size == 'medium' %}selected{% endif %}>Medium</option>
+                <option value="large" {% if preferences.font_size == 'large' %}selected{% endif %}>Large</option>
+            </select>
+        </div>
+
+        <div class="setting-group">
+            <label>
+                <input type="checkbox" id="reduceAnimations" 
+                       {% if preferences.reduce_animations %}checked{% endif %}>
+                Reduce Animations
+            </label>
+        </div>
+
+        <div class="setting-group">
+            <label>
+                <input type="checkbox" id="highContrast" 
+                       {% if preferences.high_contrast_mode %}checked{% endif %}>
+                High Contrast Mode
+            </label>
+        </div>
+
+        <div class="setting-group">
+            <label>
+                <input type="checkbox" id="textToSpeech" 
+                       {% if preferences.text_to_speech %}checked{% endif %}>
+                Text to Speech
+            </label>
+        </div>
+    </div>
+
+    <main>
+        <div id="emotionDetection" class="card">
+            <h2>How are you feeling?</h2>
+            <div class="detection-controls">
+                <button id="startVideo" class="control-button" aria-label="Start Video">
+                    <i class="fas fa-video"></i>
+                </button>
+                <button id="startAudio" class="control-button" aria-label="Start Audio">
+                    <i class="fas fa-microphone"></i>
+                </button>
+            </div>
+            <div id="videoContainer" class="hidden">
+                <video id="video" autoplay muted></video>
+                <canvas id="canvas" class="hidden"></canvas>
+            </div>
+            <div id="emotionResults" class="hidden">
+                <p>Face Emotion: <span id="faceEmotion">-</span></p>
+                <p>Voice Emotion: <span id="voiceEmotion">-</span></p>
+            </div>
+        </div>
+
+        <div id="chatContainer" class="card">
+            <div id="chatMessages"></div>
+            <div class="chat-input">
+                <input type="text" id="messageInput" placeholder="Type your message..." 
+                       aria-label="Type your message">
+                <button id="sendMessage" aria-label="Send Message">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script src="{% static 'js/script.js' %}"></script>
+</body>
+</html>
