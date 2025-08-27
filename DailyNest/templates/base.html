@@ -223,6 +223,62 @@
             box-shadow: var(--focus-ring);
         }
 
+        /* User Menu */
+        .user-menu {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            background: rgba(99, 102, 241, 0.1);
+            border-radius: var(--border-radius);
+            margin: 0 0.5rem;
+        }
+
+        .user-greeting {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--calm-blue);
+        }
+
+        .user-role-badge {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.5rem;
+            background: var(--calm-blue);
+            color: white;
+            border-radius: 10px;
+            margin-top: 0.2rem;
+            text-transform: uppercase;
+            font-weight: 500;
+        }
+
+        .logout-link {
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626 !important;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .logout-link:hover {
+            background: rgba(239, 68, 68, 0.2);
+            color: #dc2626 !important;
+        }
+
+        body[data-theme="dark"] .user-menu {
+            background: rgba(99, 102, 241, 0.2);
+        }
+
+        body[data-theme="dark"] .user-greeting {
+            color: var(--text-dark);
+        }
+
+        body[data-theme="high-contrast"] .user-menu {
+            background: #000000;
+            border: 2px solid #ffffff;
+        }
+
+        body[data-theme="high-contrast"] .user-greeting {
+            color: #ffffff;
+        }
+
         /* Settings Panel */
         .settings-panel {
             position: fixed;
@@ -565,21 +621,44 @@
         </a>
         
         <div class="navbar-links">
-            <a href="/" class="nav-link">
-                <i class="fas fa-home"></i>
-                <span>Home</span>
-            </a>
-            <a href="/emotion/" class="nav-link">
-                <i class="fas fa-smile"></i>
-                <span>Emotions</span>
-            </a>
-            <a href="/chat/" class="nav-link">
-                <i class="fas fa-comments"></i>
-                <span>Chat</span>
-            </a>
-            <button class="settings-btn" id="settingsBtn" aria-label="Open Settings">
-                <i class="fas fa-cog"></i>
-            </button>
+            {% if user.is_authenticated %}
+                <a href="/" class="nav-link">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/emotion/" class="nav-link">
+                    <i class="fas fa-smile"></i>
+                    <span>Emotions</span>
+                </a>
+                <a href="/chat/" class="nav-link">
+                    <i class="fas fa-comments"></i>
+                    <span>Chat</span>
+                </a>
+                <div class="user-menu">
+                    <span class="user-greeting">{{ user.name }}</span>
+                    <div class="user-role-badge">{{ user.get_role_display }}</div>
+                </div>
+                <a href="{% url 'profile' %}" class="nav-link">
+                    <i class="fas fa-user-edit"></i>
+                    <span>Profile</span>
+                </a>
+                <a href="{% url 'logout' %}" class="nav-link logout-link">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+                <button class="settings-btn" id="settingsBtn" aria-label="Open Settings">
+                    <i class="fas fa-cog"></i>
+                </button>
+            {% else %}
+                <a href="{% url 'login' %}" class="nav-link">
+                    <i class="fas fa-sign-in-alt"></i>
+                    <span>Login</span>
+                </a>
+                <a href="{% url 'register' %}" class="nav-link">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Register</span>
+                </a>
+            {% endif %}
         </div>
     </nav>
 
@@ -643,16 +722,20 @@
         const settingsBtn = document.getElementById('settingsBtn');
         const settingsPanel = document.getElementById('settingsPanel');
 
-        settingsBtn.addEventListener('click', () => {
-            settingsPanel.classList.toggle('show');
-        });
+        if (settingsBtn && settingsPanel) {
+            settingsBtn.addEventListener('click', () => {
+                settingsPanel.classList.toggle('show');
+            });
+        }
 
         // Close settings panel when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!settingsPanel.contains(e.target) && !settingsBtn.contains(e.target)) {
-                settingsPanel.classList.remove('show');
-            }
-        });
+        if (settingsPanel && settingsBtn) {
+            document.addEventListener('click', (e) => {
+                if (!settingsPanel.contains(e.target) && !settingsBtn.contains(e.target)) {
+                    settingsPanel.classList.remove('show');
+                }
+            });
+        }
 
         // Theme handling
         const themeSelect = document.getElementById('themeSelect');
@@ -671,34 +754,42 @@
         document.body.dataset.fontSize = savedFontSize;
         document.body.dataset.reduceAnimations = savedReduceAnimations;
         
-        themeSelect.value = savedTheme;
-        fontSizeSelect.value = savedFontSize;
-        reduceAnimations.checked = savedReduceAnimations;
-        textToSpeech.checked = savedTextToSpeech;
+        if (themeSelect) themeSelect.value = savedTheme;
+        if (fontSizeSelect) fontSizeSelect.value = savedFontSize;
+        if (reduceAnimations) reduceAnimations.checked = savedReduceAnimations;
+        if (textToSpeech) textToSpeech.checked = savedTextToSpeech;
 
         // Event listeners
-        themeSelect.addEventListener('change', (e) => {
-            document.body.dataset.theme = e.target.value;
-            localStorage.setItem('theme', e.target.value);
-            updatePreferences({ theme: e.target.value });
-        });
+        if (themeSelect) {
+            themeSelect.addEventListener('change', (e) => {
+                document.body.dataset.theme = e.target.value;
+                localStorage.setItem('theme', e.target.value);
+                updatePreferences({ theme: e.target.value });
+            });
+        }
 
-        fontSizeSelect.addEventListener('change', (e) => {
-            document.body.dataset.fontSize = e.target.value;
-            localStorage.setItem('fontSize', e.target.value);
-            updatePreferences({ font_size: e.target.value });
-        });
+        if (fontSizeSelect) {
+            fontSizeSelect.addEventListener('change', (e) => {
+                document.body.dataset.fontSize = e.target.value;
+                localStorage.setItem('fontSize', e.target.value);
+                updatePreferences({ font_size: e.target.value });
+            });
+        }
 
-        reduceAnimations.addEventListener('change', (e) => {
-            document.body.dataset.reduceAnimations = e.target.checked;
-            localStorage.setItem('reduceAnimations', e.target.checked);
-            updatePreferences({ reduce_animations: e.target.checked });
-        });
+        if (reduceAnimations) {
+            reduceAnimations.addEventListener('change', (e) => {
+                document.body.dataset.reduceAnimations = e.target.checked;
+                localStorage.setItem('reduceAnimations', e.target.checked);
+                updatePreferences({ reduce_animations: e.target.checked });
+            });
+        }
 
-        textToSpeech.addEventListener('change', (e) => {
-            localStorage.setItem('textToSpeech', e.target.checked);
-            updatePreferences({ text_to_speech: e.target.checked });
-        });
+        if (textToSpeech) {
+            textToSpeech.addEventListener('change', (e) => {
+                localStorage.setItem('textToSpeech', e.target.checked);
+                updatePreferences({ text_to_speech: e.target.checked });
+            });
+        }
 
         // Update preferences on server
         async function updatePreferences(preferences) {
@@ -734,9 +825,11 @@
 
         // Help button
         const helpBtn = document.getElementById('helpBtn');
-        helpBtn.addEventListener('click', () => {
-            alert('Welcome to DailyNest! This is your personal emotion-aware assistant. Use the navigation to explore emotions detection and chat features. Adjust accessibility settings using the settings button.');
-        });
+        if (helpBtn) {
+            helpBtn.addEventListener('click', () => {
+                alert('Welcome to DailyNest! This is your personal emotion-aware assistant. Use the navigation to explore emotions detection and chat features. Adjust accessibility settings using the settings button.');
+            });
+        }
 
         // Add animation classes to elements
         document.addEventListener('DOMContentLoaded', () => {

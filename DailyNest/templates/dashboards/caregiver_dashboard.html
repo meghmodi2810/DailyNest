@@ -1,0 +1,489 @@
+{% extends 'base.html' %}
+
+{% block title %}Caregiver Dashboard - DailyNest{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <div class="dashboard-title">
+        <h1><i class="fas fa-heart"></i> Caregiver Dashboard</h1>
+        <p>Monitor and support individuals in your care</p>
+    </div>
+    <div class="dashboard-actions">
+        <a href="{% url 'logout' %}" class="btn btn-secondary">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <!-- Individuals Under Care -->
+    <div class="card">
+        <h3><i class="fas fa-users"></i> Individuals Under Care</h3>
+        <div class="individuals-list">
+            {% for user in autistic_users %}
+                <div class="individual-card">
+                    <div class="individual-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="individual-info">
+                        <div class="individual-name">{{ user.name }}</div>
+                        <div class="individual-email">{{ user.email }}</div>
+                        <div class="individual-date">Member since {{ user.created_at|date:"M Y" }}</div>
+                    </div>
+                    <div class="individual-actions">
+                        <button class="btn-icon" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+            {% empty %}
+                <p class="empty-state">No individuals assigned to your care yet.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Recent Emotion Records -->
+    <div class="card">
+        <h3><i class="fas fa-chart-line"></i> Recent Emotion Activity</h3>
+        <div class="emotion-timeline">
+            {% for emotion in recent_emotions %}
+                <div class="emotion-entry">
+                    <div class="emotion-time">
+                        {{ emotion.timestamp|date:"M d, H:i" }}
+                    </div>
+                    <div class="emotion-data">
+                        <div class="emotion-user">{{ emotion.user.name|default:"Anonymous" }}</div>
+                        <div class="emotion-details">
+                            {% if emotion.face_emotion %}
+                                <span class="emotion-tag face">
+                                    <i class="fas fa-smile"></i> {{ emotion.face_emotion|title }}
+                                </span>
+                            {% endif %}
+                            {% if emotion.voice_emotion %}
+                                <span class="emotion-tag voice">
+                                    <i class="fas fa-microphone"></i> {{ emotion.voice_emotion|title }}
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <p class="empty-state">No recent emotion records found.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Quick Tools -->
+    <div class="card">
+        <h3><i class="fas fa-tools"></i> Caregiver Tools</h3>
+        <div class="tools-grid">
+            <a href="{% url 'emotion' %}" class="tool-card">
+                <i class="fas fa-smile"></i>
+                <span>Emotion Detection</span>
+                <p>Monitor emotional states</p>
+            </a>
+            <a href="{% url 'chat' %}" class="tool-card">
+                <i class="fas fa-comments"></i>
+                <span>AI Chat Support</span>
+                <p>Therapeutic conversations</p>
+            </a>
+            <a href="{% url 'schedule_note' %}" class="tool-card">
+                <i class="fas fa-calendar-plus"></i>
+                <span>Schedule Note</span>
+                <p>Schedule notes for individuals</p>
+            </a>
+            <a href="{% url 'scheduled_notes_list' %}" class="tool-card">
+                <i class="fas fa-calendar-alt"></i>
+                <span>Scheduled Notes</span>
+                <p>View all scheduled notes</p>
+            </a>
+            <button class="tool-card" onclick="generateReport()">
+                <i class="fas fa-file-alt"></i>
+                <span>Generate Report</span>
+                <p>Weekly summary report</p>
+            </button>
+        </div>
+    </div>
+
+    <!-- Alerts & Notifications -->
+    <div class="card">
+        <h3><i class="fas fa-bell"></i> Alerts & Notifications</h3>
+        <div class="alerts-list">
+            <div class="alert-item info">
+                <i class="fas fa-info-circle"></i>
+                <div class="alert-content">
+                    <div class="alert-title">System Update</div>
+                    <div class="alert-message">New emotion detection models available</div>
+                </div>
+                <div class="alert-time">2h ago</div>
+            </div>
+            <div class="alert-item success">
+                <i class="fas fa-check-circle"></i>
+                <div class="alert-content">
+                    <div class="alert-title">Positive Interaction</div>
+                    <div class="alert-message">High confidence happy emotion detected</div>
+                </div>
+                <div class="alert-time">4h ago</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    body[data-theme="dark"] .dashboard-header {
+        border-color: #374151;
+    }
+
+    .dashboard-title h1 {
+        font-family: 'Poppins', sans-serif;
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin: 0;
+        background: var(--secondary-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .dashboard-title p {
+        margin: 0.5rem 0 0 0;
+        color: #64748b;
+        font-size: 1.1rem;
+    }
+
+    body[data-theme="dark"] .dashboard-title p {
+        color: #94a3b8;
+    }
+
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 2rem;
+    }
+
+    .individuals-list {
+        margin-top: 1.5rem;
+    }
+
+    .individual-card {
+        display: flex;
+        align-items: center;
+        padding: 1.25rem;
+        border-radius: var(--border-radius);
+        margin-bottom: 1rem;
+        background: rgba(16, 185, 129, 0.05);
+        border: 1px solid rgba(16, 185, 129, 0.1);
+        transition: var(--transition);
+    }
+
+    .individual-card:hover {
+        background: rgba(16, 185, 129, 0.1);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .individual-avatar {
+        width: 60px;
+        height: 60px;
+        background: var(--soft-green);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        margin-right: 1rem;
+        font-size: 1.5rem;
+    }
+
+    .individual-info {
+        flex: 1;
+    }
+
+    .individual-name {
+        font-weight: 600;
+        font-size: 1.2rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .individual-email {
+        color: #64748b;
+        font-size: 0.9rem;
+        margin-bottom: 0.25rem;
+    }
+
+    body[data-theme="dark"] .individual-email {
+        color: #94a3b8;
+    }
+
+    .individual-date {
+        color: #64748b;
+        font-size: 0.8rem;
+    }
+
+    body[data-theme="dark"] .individual-date {
+        color: #94a3b8;
+    }
+
+    .btn-icon {
+        width: 40px;
+        height: 40px;
+        border: none;
+        background: var(--soft-green);
+        color: white;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: var(--transition);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-icon:hover {
+        background: var(--calm-blue);
+        transform: scale(1.1);
+    }
+
+    .emotion-timeline {
+        margin-top: 1.5rem;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .emotion-entry {
+        display: flex;
+        gap: 1rem;
+        padding: 1rem;
+        border-left: 3px solid var(--warm-orange);
+        margin-bottom: 1rem;
+        background: rgba(245, 158, 11, 0.05);
+        border-radius: 0 var(--border-radius) var(--border-radius) 0;
+    }
+
+    .emotion-time {
+        font-size: 0.8rem;
+        color: #64748b;
+        min-width: 80px;
+        font-weight: 500;
+    }
+
+    body[data-theme="dark"] .emotion-time {
+        color: #94a3b8;
+    }
+
+    .emotion-data {
+        flex: 1;
+    }
+
+    .emotion-user {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .emotion-details {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .emotion-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    .emotion-tag.face {
+        background: rgba(99, 102, 241, 0.1);
+        color: var(--calm-blue);
+        border: 1px solid rgba(99, 102, 241, 0.2);
+    }
+
+    .emotion-tag.voice {
+        background: rgba(139, 92, 246, 0.1);
+        color: var(--gentle-purple);
+        border: 1px solid rgba(139, 92, 246, 0.2);
+    }
+
+    .tools-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    .tool-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 1.5rem;
+        background: var(--surface-light);
+        border: 2px solid #e2e8f0;
+        border-radius: var(--border-radius);
+        text-decoration: none;
+        color: var(--text-light);
+        transition: var(--transition);
+        text-align: center;
+        cursor: pointer;
+    }
+
+    body[data-theme="dark"] .tool-card {
+        background: var(--surface-dark);
+        border-color: #374151;
+        color: var(--text-dark);
+    }
+
+    .tool-card:hover {
+        border-color: var(--soft-green);
+        background: rgba(16, 185, 129, 0.05);
+        transform: translateY(-2px);
+        color: var(--soft-green);
+    }
+
+    .tool-card i {
+        font-size: 2rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .tool-card span {
+        font-weight: 600;
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .tool-card p {
+        font-size: 0.8rem;
+        color: #64748b;
+        margin: 0;
+    }
+
+    body[data-theme="dark"] .tool-card p {
+        color: #94a3b8;
+    }
+
+    .alerts-list {
+        margin-top: 1.5rem;
+    }
+
+    .alert-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        padding: 1rem;
+        border-radius: var(--border-radius);
+        margin-bottom: 1rem;
+        border-left: 4px solid;
+    }
+
+    .alert-item.info {
+        background: rgba(59, 130, 246, 0.05);
+        border-left-color: #3b82f6;
+    }
+
+    .alert-item.success {
+        background: rgba(34, 197, 94, 0.05);
+        border-left-color: #22c55e;
+    }
+
+    .alert-item.warning {
+        background: rgba(245, 158, 11, 0.05);
+        border-left-color: #f59e0b;
+    }
+
+    .alert-item i {
+        margin-top: 0.25rem;
+        font-size: 1.2rem;
+    }
+
+    .alert-item.info i {
+        color: #3b82f6;
+    }
+
+    .alert-item.success i {
+        color: #22c55e;
+    }
+
+    .alert-item.warning i {
+        color: #f59e0b;
+    }
+
+    .alert-content {
+        flex: 1;
+    }
+
+    .alert-title {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+
+    .alert-message {
+        font-size: 0.9rem;
+        color: #64748b;
+    }
+
+    body[data-theme="dark"] .alert-message {
+        color: #94a3b8;
+    }
+
+    .alert-time {
+        font-size: 0.8rem;
+        color: #64748b;
+        white-space: nowrap;
+    }
+
+    body[data-theme="dark"] .alert-time {
+        color: #94a3b8;
+    }
+
+    .empty-state {
+        text-align: center;
+        color: #64748b;
+        font-style: italic;
+        padding: 2rem;
+    }
+
+    body[data-theme="dark"] .empty-state {
+        color: #94a3b8;
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-header {
+            flex-direction: column;
+            gap: 1rem;
+            text-align: center;
+        }
+
+        .dashboard-title h1 {
+            font-size: 2rem;
+        }
+
+        .dashboard-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .tools-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<script>
+    function generateReport() {
+        alert('Report generation feature coming soon! This will create a comprehensive weekly summary of emotional patterns and interactions.');
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,369 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard - DailyNest{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <div class="dashboard-title">
+        <h1><i class="fas fa-shield-alt"></i> Admin Dashboard</h1>
+        <p>System overview and user management</p>
+    </div>
+    <div class="dashboard-actions">
+        <a href="{% url 'logout' %}" class="btn btn-secondary">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <!-- System Statistics -->
+    <div class="card stats-card">
+        <h3><i class="fas fa-chart-bar"></i> System Statistics</h3>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-number">{{ user_count }}</div>
+                <div class="stat-label">Total Users</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">{{ emotion_records_count }}</div>
+                <div class="stat-label">Emotion Records</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">{{ chat_messages_count }}</div>
+                <div class="stat-label">Chat Messages</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Users -->
+    <div class="card">
+        <h3><i class="fas fa-users"></i> Recent Users</h3>
+        <div class="user-list">
+            {% for user in recent_users %}
+                <div class="user-item">
+                    <div class="user-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="user-info">
+                        <div class="user-name">{{ user.name }}</div>
+                        <div class="user-role">{{ user.get_role_display }}</div>
+                        <div class="user-date">Joined {{ user.created_at|date:"M d, Y" }}</div>
+                    </div>
+                    <div class="user-status">
+                        <span class="status-badge {% if user.is_active %}active{% else %}inactive{% endif %}">
+                            {% if user.is_active %}Active{% else %}Inactive{% endif %}
+                        </span>
+                    </div>
+                </div>
+            {% empty %}
+                <p class="empty-state">No users found.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card">
+        <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
+        <div class="action-grid">
+            <a href="/admin/" class="action-btn">
+                <i class="fas fa-cog"></i>
+                <span>Django Admin</span>
+            </a>
+            <a href="{% url 'emotion' %}" class="action-btn">
+                <i class="fas fa-smile"></i>
+                <span>Emotion Detection</span>
+            </a>
+            <a href="{% url 'chat' %}" class="action-btn">
+                <i class="fas fa-comments"></i>
+                <span>AI Chat</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- System Health -->
+    <div class="card">
+        <h3><i class="fas fa-heartbeat"></i> System Health</h3>
+        <div class="health-items">
+            <div class="health-item">
+                <div class="health-indicator good"></div>
+                <span>Database Connection</span>
+            </div>
+            <div class="health-item">
+                <div class="health-indicator good"></div>
+                <span>ML Models</span>
+            </div>
+            <div class="health-item">
+                <div class="health-indicator good"></div>
+                <span>Chat Service</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    body[data-theme="dark"] .dashboard-header {
+        border-color: #374151;
+    }
+
+    .dashboard-title h1 {
+        font-family: 'Poppins', sans-serif;
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin: 0;
+        background: var(--primary-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .dashboard-title p {
+        margin: 0.5rem 0 0 0;
+        color: #64748b;
+        font-size: 1.1rem;
+    }
+
+    body[data-theme="dark"] .dashboard-title p {
+        color: #94a3b8;
+    }
+
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 2rem;
+    }
+
+    .stats-card {
+        grid-column: 1 / -1;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 2rem;
+        margin-top: 1.5rem;
+    }
+
+    .stat-item {
+        text-align: center;
+        padding: 1.5rem;
+        background: var(--accent-gradient);
+        border-radius: var(--border-radius);
+        color: white;
+        box-shadow: var(--shadow-md);
+    }
+
+    .stat-number {
+        font-size: 3rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        font-size: 1.1rem;
+        opacity: 0.9;
+    }
+
+    .user-list {
+        margin-top: 1.5rem;
+    }
+
+    .user-item {
+        display: flex;
+        align-items: center;
+        padding: 1rem;
+        border-radius: var(--border-radius);
+        margin-bottom: 1rem;
+        background: rgba(99, 102, 241, 0.05);
+        border: 1px solid rgba(99, 102, 241, 0.1);
+        transition: var(--transition);
+    }
+
+    .user-item:hover {
+        background: rgba(99, 102, 241, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .user-avatar {
+        width: 50px;
+        height: 50px;
+        background: var(--primary-gradient);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        margin-right: 1rem;
+    }
+
+    .user-info {
+        flex: 1;
+    }
+
+    .user-name {
+        font-weight: 600;
+        font-size: 1.1rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .user-role {
+        color: var(--calm-blue);
+        font-weight: 500;
+        font-size: 0.9rem;
+    }
+
+    .user-date {
+        color: #64748b;
+        font-size: 0.85rem;
+        margin-top: 0.25rem;
+    }
+
+    body[data-theme="dark"] .user-date {
+        color: #94a3b8;
+    }
+
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .status-badge.active {
+        background: rgba(34, 197, 94, 0.1);
+        color: #16a34a;
+        border: 1px solid rgba(34, 197, 94, 0.2);
+    }
+
+    .status-badge.inactive {
+        background: rgba(239, 68, 68, 0.1);
+        color: #dc2626;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .action-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    .action-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 1.5rem;
+        background: var(--surface-light);
+        border: 2px solid #e2e8f0;
+        border-radius: var(--border-radius);
+        text-decoration: none;
+        color: var(--text-light);
+        transition: var(--transition);
+        gap: 0.75rem;
+    }
+
+    body[data-theme="dark"] .action-btn {
+        background: var(--surface-dark);
+        border-color: #374151;
+        color: var(--text-dark);
+    }
+
+    .action-btn:hover {
+        border-color: var(--calm-blue);
+        background: rgba(99, 102, 241, 0.05);
+        transform: translateY(-2px);
+        color: var(--calm-blue);
+    }
+
+    .action-btn i {
+        font-size: 2rem;
+    }
+
+    .action-btn span {
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .health-items {
+        margin-top: 1.5rem;
+    }
+
+    .health-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    body[data-theme="dark"] .health-item {
+        border-color: #374151;
+    }
+
+    .health-item:last-child {
+        border-bottom: none;
+    }
+
+    .health-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+
+    .health-indicator.good {
+        background: #22c55e;
+    }
+
+    .health-indicator.warning {
+        background: #f59e0b;
+    }
+
+    .health-indicator.error {
+        background: #ef4444;
+    }
+
+    .empty-state {
+        text-align: center;
+        color: #64748b;
+        font-style: italic;
+        padding: 2rem;
+    }
+
+    body[data-theme="dark"] .empty-state {
+        color: #94a3b8;
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-header {
+            flex-direction: column;
+            gap: 1rem;
+            text-align: center;
+        }
+
+        .dashboard-title h1 {
+            font-size: 2rem;
+        }
+
+        .dashboard-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}

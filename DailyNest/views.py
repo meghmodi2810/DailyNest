@@ -1,16 +1,25 @@
-from django.shortcuts import render
-from django.views.decorators.csrf import csrf_exempt
+from django.shortcuts import render, redirect
+from django.contrib.auth import login, logout
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.http import JsonResponse
-import json
-import base64
-import tempfile
-import os
-from .models import EmotionRecord, ChatMessage, UserPreference
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from .models import CustomUser, EmotionRecord, ChatMessage, UserPreference, PasswordResetOTP, ScheduledNote
+from .forms import CustomUserRegistrationForm, CustomLoginForm, UserProfileForm, ForgotPasswordForm, OTPVerificationForm, ResetPasswordForm, ScheduledNoteForm
 from .ml_models_fallback import get_emotion_detector, get_speech_processor
 
 # Import enhanced chatbot
 from .chatbot_enhanced import get_enhanced_chatbot
 import logging
+import json
+import base64
+import tempfile
+import os
+import random
+from django.core.mail import send_mail
+from django.conf import settings
+from django.utils import timezone
 
 # Optional imports with fallbacks
 try:
@@ -27,9 +36,146 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+# Authentication Views
+def login_view(request):
+    """Custom login view with role-based authentication"""
+    if request.user.is_authenticated:
+        return redirect_to_dashboard(request.user)
+    
+    if request.method == 'POST':
+        form = CustomLoginForm(request, data=request.POST)
+        if form.is_valid():
+            user = form.get_user()
+            login(request, user)
+            messages.success(request, f'Welcome back, {user.name}!')
+            return redirect_to_dashboard(user)
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = CustomLoginForm()
+    
+    return render(request, 'auth/login.html', {'form': form})
+
+def register_view(request):
+    """User registration view with caregiver invitation system"""
+    if request.user.is_authenticated:
+        return redirect_to_dashboard(request.user)
+    
+    if request.method == 'POST':
+        form = CustomUserRegistrationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            
+            # Handle caregiver invitation for autistic persons
+            if (user.role == 'autistic_person' and 
+                form.cleaned_data.get('caregiver_email')):
+                
+                from .models import CaregiverInvitation
+                import uuid
+                from datetime import datetime, timedelta
+                
+                # Create invitation
+                invitation = CaregiverInvitation.objects.create(
+                    autistic_person=user,
+                    caregiver_email=form.cleaned_data['caregiver_email'],
+                    relationship_type=form.cleaned_data.get('relationship_type', 'guardian'),
+                    invitation_token=str(uuid.uuid4()),
+                    message=form.cleaned_data.get('invitation_message', ''),
+                    expires_at=datetime.now() + timedelta(days=7)
+                )
+                
+                # TODO: Send email invitation (for now, just show success message)
+                messages.success(request, f'Account created successfully! Invitation sent to {invitation.caregiver_email}')
+            else:
+                messages.success(request, f'Account created successfully for {user.name}!')
+            
+            login(request, user)
+            return redirect_to_dashboard(user)
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = CustomUserRegistrationForm()
+    
+    return render(request, 'auth/register.html', {'form': form})
+
+def logout_view(request):
+    """User logout view"""
+    logout(request)
+    messages.info(request, 'You have been logged out successfully.')
+    return redirect('login')
+
+def redirect_to_dashboard(user):
+    """Redirect user to appropriate dashboard based on role"""
+    if user.role == 'admin':
+        return redirect('admin_dashboard')
+    elif user.role == 'caregiver':
+        return redirect('caregiver_dashboard')
+    else:  # autistic_person
+        return redirect('autistic_dashboard')
+
+# Dashboard Views
+@login_required
+def admin_dashboard(request):
+    """Admin dashboard with system overview"""
+    context = {
+        'user_count': CustomUser.objects.count(),
+        'emotion_records_count': EmotionRecord.objects.count(),
+        'chat_messages_count': ChatMessage.objects.count(),
+        'recent_users': CustomUser.objects.order_by('-created_at')[:5],
+    }
+    return render(request, 'dashboards/admin_dashboard.html', context)
+
+@login_required
+def caregiver_dashboard(request):
+    """Caregiver dashboard with patient monitoring"""
+    from .models import CareRelationship
+    
+    # Get only autistic persons under this caregiver's care
+    care_relationships = CareRelationship.objects.filter(
+        caregiver=request.user, 
+        is_active=True
+    ).select_related('autistic_person')
+    
+    autistic_users = [rel.autistic_person for rel in care_relationships]
+    
+    # Get recent emotions only for users under care
+    user_ids = [user.id for user in autistic_users]
+    recent_emotions = EmotionRecord.objects.filter(
+        user_id__in=user_ids
+    ).order_by('-timestamp')[:10]
+    
+    context = {
+        'autistic_users': autistic_users,
+        'recent_emotions': recent_emotions,
+        'care_relationships': care_relationships,
+    }
+    return render(request, 'dashboards/caregiver_dashboard.html', context)
+
+@login_required
+def autistic_dashboard(request):
+    """Autistic person dashboard with personal tools"""
+    from .models import CareRelationship
+    
+    recent_emotions = EmotionRecord.objects.filter(user=request.user).order_by('-timestamp')[:5]
+    recent_chats = ChatMessage.objects.filter(sender='user').order_by('-timestamp')[:5]
+    
+    # Get caregiver information
+    caregiver_relationships = CareRelationship.objects.filter(
+        autistic_person=request.user,
+        is_active=True
+    ).select_related('caregiver')
+    
+    context = {
+        'recent_emotions': recent_emotions,
+        'recent_chats': recent_chats,
+        'caregiver_relationships': caregiver_relationships,
+    }
+    return render(request, 'dashboards/autistic_dashboard.html', context)
+
+@login_required
 def dashboard(request):
-    """Dashboard page view - main landing page"""
-    return render(request, 'dashboard.html')
+    """Dashboard page view - redirects to appropriate role dashboard"""
+    return redirect_to_dashboard(request.user)
 
 def home(request):
     """Home page view"""
@@ -42,8 +188,7 @@ def emotion(request):
         preferences, created = UserPreference.objects.get_or_create(user=request.user)
     else:
         # For anonymous users, try to get the first superuser or create default preferences
-        from django.contrib.auth.models import User
-        default_user = User.objects.filter(is_superuser=True).first()
+        default_user = CustomUser.objects.filter(is_superuser=True).first()
         if default_user:
             preferences, created = UserPreference.objects.get_or_create(user=default_user)
         else:
@@ -62,8 +207,7 @@ def chat(request):
         preferences, created = UserPreference.objects.get_or_create(user=request.user)
     else:
         # For anonymous users, try to get the first superuser or create default preferences
-        from django.contrib.auth.models import User
-        default_user = User.objects.filter(is_superuser=True).first()
+        default_user = CustomUser.objects.filter(is_superuser=True).first()
         if default_user:
             preferences, created = UserPreference.objects.get_or_create(user=default_user)
         else:
@@ -237,8 +381,7 @@ def update_preferences(request):
                 preferences, created = UserPreference.objects.get_or_create(user=request.user)
             else:
                 # For anonymous users, try to get the first superuser
-                from django.contrib.auth.models import User
-                default_user = User.objects.filter(is_superuser=True).first()
+                default_user = CustomUser.objects.filter(is_superuser=True).first()
                 if default_user:
                     preferences, created = UserPreference.objects.get_or_create(user=default_user)
                 else:
@@ -314,6 +457,207 @@ def get_emotion_history(request):
 def clear_chat(request):
     """Clear chat message history"""
     return clear_chat_history(request)
+
+@login_required
+def profile_view(request):
+    """User profile view and edit"""
+    if request.method == 'POST':
+        form = UserProfileForm(request.POST, request.FILES, instance=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Profile updated successfully!')
+            return redirect('profile')
+    else:
+        form = UserProfileForm(instance=request.user)
+    
+    return render(request, 'profile/profile.html', {
+        'form': form,
+        'user': request.user
+    })
+
+@csrf_exempt
+def forgot_password_view(request):
+    """Handle forgot password request"""
+    if request.method == 'POST':
+        form = ForgotPasswordForm(request.POST)
+        if form.is_valid():
+            email = form.cleaned_data['email']
+            try:
+                user = CustomUser.objects.get(email=email)
+                
+                # Generate 6-digit OTP
+                otp_code = str(random.randint(100000, 999999))
+                
+                # Create OTP record
+                otp_record = PasswordResetOTP.objects.create(
+                    user=user,
+                    otp_code=otp_code,
+                    expires_at=timezone.now() + timedelta(minutes=10)
+                )
+                
+                # Send OTP email (you'll need to configure email settings)
+                try:
+                    send_mail(
+                        'Password Reset OTP - DailyNest',
+                        f'Your password reset OTP is: {otp_code}\n\nThis OTP will expire in 10 minutes.',
+                        settings.DEFAULT_FROM_EMAIL,
+                        [email],
+                        fail_silently=False,
+                    )
+                    messages.success(request, f'OTP sent to {email}. Please check your email.')
+                    return redirect('verify_otp', user_id=user.id)
+                except Exception as e:
+                    messages.error(request, f'Error sending email: {str(e)}')
+                    # For development, show OTP in message
+                    messages.info(request, f'Development mode - OTP: {otp_code}')
+                    return redirect('verify_otp', user_id=user.id)
+                    
+            except CustomUser.DoesNotExist:
+                messages.error(request, 'No account found with this email address.')
+    else:
+        form = ForgotPasswordForm()
+    
+    return render(request, 'auth/forgot_password.html', {'form': form})
+
+@csrf_exempt
+def verify_otp_view(request, user_id):
+    """Handle OTP verification"""
+    try:
+        user = CustomUser.objects.get(id=user_id)
+    except CustomUser.DoesNotExist:
+        messages.error(request, 'Invalid request.')
+        return redirect('login')
+    
+    if request.method == 'POST':
+        form = OTPVerificationForm(request.POST)
+        if form.is_valid():
+            otp_code = form.cleaned_data['otp_code']
+            
+            # Find valid OTP
+            otp_record = PasswordResetOTP.objects.filter(
+                user=user,
+                otp_code=otp_code,
+                is_used=False
+            ).first()
+            
+            if otp_record and not otp_record.is_expired():
+                # Mark OTP as used
+                otp_record.is_used = True
+                otp_record.save()
+                
+                messages.success(request, 'OTP verified successfully. Please set your new password.')
+                return redirect('reset_password', user_id=user.id)
+            else:
+                messages.error(request, 'Invalid or expired OTP. Please try again.')
+    else:
+        form = OTPVerificationForm()
+    
+    return render(request, 'auth/verify_otp.html', {
+        'form': form,
+        'user': user
+    })
+
+@csrf_exempt
+def reset_password_view(request, user_id):
+    """Handle password reset"""
+    try:
+        user = CustomUser.objects.get(id=user_id)
+    except CustomUser.DoesNotExist:
+        messages.error(request, 'Invalid request.')
+        return redirect('login')
+    
+    # Check if user has a valid used OTP (security check)
+    recent_otp = PasswordResetOTP.objects.filter(
+        user=user,
+        is_used=True,
+        created_at__gte=timezone.now() - timedelta(minutes=15)
+    ).first()
+    
+    if not recent_otp:
+        messages.error(request, 'Invalid request. Please start the password reset process again.')
+        return redirect('forgot_password')
+    
+    if request.method == 'POST':
+        form = ResetPasswordForm(request.POST)
+        if form.is_valid():
+            new_password = form.cleaned_data['new_password']
+            
+            # Update user password
+            user.set_password(new_password)
+            user.save()
+            
+            # Delete all OTP records for this user
+            PasswordResetOTP.objects.filter(user=user).delete()
+            
+            messages.success(request, 'Password reset successfully. Please login with your new password.')
+            return redirect('login')
+    else:
+        form = ResetPasswordForm()
+    
+    return render(request, 'auth/reset_password.html', {
+        'form': form,
+        'user': user
+    })
+
+@login_required
+def schedule_note_view(request):
+    """Handle scheduling notes for autistic persons"""
+    if request.user.role != 'caregiver':
+        messages.error(request, 'Only caregivers can schedule notes.')
+        return redirect('dashboard')
+    
+    if request.method == 'POST':
+        form = ScheduledNoteForm(request.POST)
+        if form.is_valid():
+            scheduled_note = form.save(commit=False)
+            scheduled_note.caregiver = request.user
+            
+            # Get autistic person from form or session
+            autistic_person_id = request.POST.get('autistic_person_id')
+            if autistic_person_id:
+                try:
+                    autistic_person = CustomUser.objects.get(
+                        id=autistic_person_id,
+                        role='autistic_person'
+                    )
+                    scheduled_note.autistic_person = autistic_person
+                    scheduled_note.next_run_time = scheduled_note.scheduled_time
+                    scheduled_note.save()
+                    
+                    messages.success(request, f'Note scheduled successfully for {autistic_person.name}.')
+                    return redirect('caregiver_dashboard')
+                except CustomUser.DoesNotExist:
+                    messages.error(request, 'Invalid autistic person selected.')
+            else:
+                messages.error(request, 'Please select an autistic person.')
+    else:
+        form = ScheduledNoteForm()
+    
+    # Get autistic persons under this caregiver's care
+    from .models import CareRelationship
+    care_relationships = CareRelationship.objects.filter(caregiver=request.user)
+    autistic_persons = [rel.autistic_person for rel in care_relationships]
+    
+    return render(request, 'notes/schedule_note.html', {
+        'form': form,
+        'autistic_persons': autistic_persons
+    })
+
+@login_required
+def scheduled_notes_list_view(request):
+    """List all scheduled notes for caregiver"""
+    if request.user.role != 'caregiver':
+        messages.error(request, 'Only caregivers can view scheduled notes.')
+        return redirect('dashboard')
+    
+    scheduled_notes = ScheduledNote.objects.filter(
+        caregiver=request.user,
+        is_active=True
+    ).order_by('next_run_time')
+    
+    return render(request, 'notes/scheduled_notes_list.html', {
+        'scheduled_notes': scheduled_notes
+    })
 
 @csrf_exempt
 def clear_chat_history(request):

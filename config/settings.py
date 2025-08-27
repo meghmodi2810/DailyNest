@@ -41,6 +41,14 @@ INSTALLED_APPS = [
     'DailyNest',
 ]
 
+# Custom User Model
+AUTH_USER_MODEL = 'DailyNest.CustomUser'
+
+# Login/Logout URLs
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/login/'
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',

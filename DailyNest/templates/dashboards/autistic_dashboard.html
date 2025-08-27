@@ -1,0 +1,614 @@
+{% extends 'base.html' %}
+
+{% block title %}My Dashboard - DailyNest{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <div class="dashboard-title">
+        <h1><i class="fas fa-home"></i> Welcome, {{ user.name }}!</h1>
+        <p>Your personal emotion-aware assistant</p>
+    </div>
+    <div class="dashboard-actions">
+        <a href="{% url 'logout' %}" class="btn btn-secondary">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <!-- Quick Access Tools -->
+    <div class="card featured-card">
+        <h3><i class="fas fa-star"></i> Your Tools</h3>
+        <div class="tools-grid">
+            <a href="{% url 'emotion' %}" class="tool-card primary">
+                <div class="tool-icon">
+                    <i class="fas fa-smile"></i>
+                </div>
+                <div class="tool-content">
+                    <h4>Emotion Detection</h4>
+                    <p>Track your feelings through face and voice</p>
+                </div>
+            </a>
+            <a href="{% url 'chat' %}" class="tool-card secondary">
+                <div class="tool-icon">
+                    <i class="fas fa-comments"></i>
+                </div>
+                <div class="tool-content">
+                    <h4>AI Chat</h4>
+                    <p>Talk with your emotion-aware AI friend</p>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Recent Emotions -->
+    <div class="card">
+        <h3><i class="fas fa-chart-line"></i> Your Recent Emotions</h3>
+        <div class="emotions-list">
+            {% for emotion in recent_emotions %}
+                <div class="emotion-card">
+                    <div class="emotion-time">
+                        {{ emotion.timestamp|date:"M d, H:i" }}
+                    </div>
+                    <div class="emotion-content">
+                        {% if emotion.face_emotion %}
+                            <div class="emotion-item face">
+                                <i class="fas fa-smile"></i>
+                                <span>{{ emotion.face_emotion|title }}</span>
+                                <div class="confidence-bar">
+                                    <div class="confidence-fill" style="width: {{ emotion.face_confidence|floatformat:0 }}%"></div>
+                                </div>
+                            </div>
+                        {% endif %}
+                        {% if emotion.voice_emotion %}
+                            <div class="emotion-item voice">
+                                <i class="fas fa-microphone"></i>
+                                <span>{{ emotion.voice_emotion|title }}</span>
+                                <div class="confidence-bar">
+                                    <div class="confidence-fill" style="width: {{ emotion.voice_confidence|floatformat:0 }}%"></div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% empty %}
+                <div class="empty-state">
+                    <i class="fas fa-smile"></i>
+                    <p>No emotions recorded yet. Try the emotion detection tool!</p>
+                    <a href="{% url 'emotion' %}" class="btn btn-primary">Start Tracking</a>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Recent Chats -->
+    <div class="card">
+        <h3><i class="fas fa-message"></i> Recent Conversations</h3>
+        <div class="chats-list">
+            {% for chat in recent_chats %}
+                <div class="chat-card">
+                    <div class="chat-time">
+                        {{ chat.timestamp|date:"M d, H:i" }}
+                    </div>
+                    <div class="chat-message">
+                        {{ chat.message|truncatewords:15 }}
+                    </div>
+                </div>
+            {% empty %}
+                <div class="empty-state">
+                    <i class="fas fa-comments"></i>
+                    <p>No conversations yet. Start chatting with your AI friend!</p>
+                    <a href="{% url 'chat' %}" class="btn btn-primary">Start Chatting</a>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- My Caregivers -->
+    <div class="card">
+        <h3><i class="fas fa-user-friends"></i> My Caregivers</h3>
+        <div class="caregivers-list">
+            {% for relationship in caregiver_relationships %}
+                <div class="caregiver-card">
+                    <div class="caregiver-info">
+                        <div class="caregiver-avatar">
+                            {% if relationship.caregiver.profile_picture %}
+                                <img src="{{ relationship.caregiver.profile_picture.url }}" alt="{{ relationship.caregiver.name }}">
+                            {% else %}
+                                <i class="fas fa-user-circle"></i>
+                            {% endif %}
+                        </div>
+                        <div class="caregiver-details">
+                            <h4>{{ relationship.caregiver.name }}</h4>
+                            <p class="caregiver-role">{{ relationship.get_relationship_type_display }}</p>
+                            <p class="caregiver-contact">{{ relationship.caregiver.email }}</p>
+                            {% if relationship.caregiver.phone %}
+                                <p class="caregiver-phone">{{ relationship.caregiver.phone }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="empty-state">
+                    <i class="fas fa-user-plus"></i>
+                    <p>No caregivers assigned yet.</p>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Daily Tips -->
+    <div class="card tips-card">
+        <h3><i class="fas fa-lightbulb"></i> Daily Wellness Tips</h3>
+        <div class="tips-carousel">
+            <div class="tip-item active">
+                <div class="tip-icon">
+                    <i class="fas fa-heart"></i>
+                </div>
+                <div class="tip-content">
+                    <h4>Take Deep Breaths</h4>
+                    <p>When feeling overwhelmed, try taking 5 deep breaths. Breathe in for 4 counts, hold for 4, and exhale for 6.</p>
+                </div>
+            </div>
+            <div class="tip-item">
+                <div class="tip-icon">
+                    <i class="fas fa-sun"></i>
+                </div>
+                <div class="tip-content">
+                    <h4>Morning Routine</h4>
+                    <p>Start your day with something you enjoy - it could be music, a favorite snack, or a few minutes of quiet time.</p>
+                </div>
+            </div>
+            <div class="tip-item">
+                <div class="tip-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="tip-content">
+                    <h4>Connect with Others</h4>
+                    <p>Reach out to someone you trust when you need support. You're never alone in your journey.</p>
+                </div>
+            </div>
+        </div>
+        <div class="tip-controls">
+            <button class="tip-btn" onclick="previousTip()">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <div class="tip-indicators">
+                <span class="indicator active"></span>
+                <span class="indicator"></span>
+                <span class="indicator"></span>
+            </div>
+            <button class="tip-btn" onclick="nextTip()">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    body[data-theme="dark"] .dashboard-header {
+        border-color: #374151;
+    }
+
+    .dashboard-title h1 {
+        font-family: 'Poppins', sans-serif;
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin: 0;
+        background: var(--accent-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .dashboard-title p {
+        margin: 0.5rem 0 0 0;
+        color: #64748b;
+        font-size: 1.1rem;
+    }
+
+    body[data-theme="dark"] .dashboard-title p {
+        color: #94a3b8;
+    }
+
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 2rem;
+    }
+
+    .featured-card {
+        grid-column: 1 / -1;
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%);
+        border: 2px solid rgba(99, 102, 241, 0.1);
+    }
+
+    .tools-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-top: 1.5rem;
+    }
+
+    .tool-card {
+        display: flex;
+        align-items: center;
+        padding: 2rem;
+        border-radius: var(--border-radius-lg);
+        text-decoration: none;
+        transition: var(--transition);
+        border: 2px solid transparent;
+        gap: 1.5rem;
+    }
+
+    .tool-card.primary {
+        background: var(--primary-gradient);
+        color: white;
+    }
+
+    .tool-card.secondary {
+        background: var(--secondary-gradient);
+        color: white;
+    }
+
+    .tool-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-xl);
+    }
+
+    .tool-icon {
+        width: 60px;
+        height: 60px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    .tool-content h4 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.3rem;
+        font-weight: 600;
+    }
+
+    .tool-content p {
+        margin: 0;
+        opacity: 0.9;
+        font-size: 1rem;
+    }
+
+    .emotions-list {
+        margin-top: 1.5rem;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .emotion-card {
+        padding: 1.25rem;
+        border-radius: var(--border-radius);
+        margin-bottom: 1rem;
+        background: rgba(6, 182, 212, 0.05);
+        border: 1px solid rgba(6, 182, 212, 0.1);
+        transition: var(--transition);
+    }
+
+    .emotion-card:hover {
+        background: rgba(6, 182, 212, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .emotion-time {
+        font-size: 0.9rem;
+        color: #64748b;
+        margin-bottom: 1rem;
+        font-weight: 500;
+    }
+
+    body[data-theme="dark"] .emotion-time {
+        color: #94a3b8;
+    }
+
+    .emotion-content {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .emotion-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        border-radius: var(--border-radius);
+        background: var(--surface-light);
+        border: 1px solid #e2e8f0;
+    }
+
+    body[data-theme="dark"] .emotion-item {
+        background: var(--surface-dark);
+        border-color: #374151;
+    }
+
+    .emotion-item.face i {
+        color: var(--calm-blue);
+    }
+
+    .emotion-item.voice i {
+        color: var(--gentle-purple);
+    }
+
+    .emotion-item span {
+        font-weight: 500;
+        min-width: 80px;
+    }
+
+    .confidence-bar {
+        flex: 1;
+        height: 6px;
+        background: #e2e8f0;
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    body[data-theme="dark"] .confidence-bar {
+        background: #374151;
+    }
+
+    .confidence-fill {
+        height: 100%;
+        background: var(--soothing-teal);
+        border-radius: 3px;
+        transition: width 0.3s ease;
+    }
+
+    .chats-list {
+        margin-top: 1.5rem;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .chat-card {
+        padding: 1rem;
+        border-radius: var(--border-radius);
+        margin-bottom: 1rem;
+        background: rgba(139, 92, 246, 0.05);
+        border: 1px solid rgba(139, 92, 246, 0.1);
+        transition: var(--transition);
+    }
+
+    .chat-card:hover {
+        background: rgba(139, 92, 246, 0.1);
+        transform: translateY(-1px);
+    }
+
+    .chat-time {
+        font-size: 0.8rem;
+        color: #64748b;
+        margin-bottom: 0.5rem;
+    }
+
+    body[data-theme="dark"] .chat-time {
+        color: #94a3b8;
+    }
+
+    .chat-message {
+        font-size: 0.95rem;
+        line-height: 1.5;
+    }
+
+    .tips-card {
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, rgba(34, 197, 94, 0.05) 100%);
+        border: 2px solid rgba(245, 158, 11, 0.1);
+    }
+
+    .tips-carousel {
+        position: relative;
+        margin-top: 1.5rem;
+        min-height: 150px;
+    }
+
+    .tip-item {
+        display: none;
+        align-items: center;
+        gap: 1.5rem;
+        padding: 1.5rem;
+        background: rgba(255, 255, 255, 0.7);
+        border-radius: var(--border-radius);
+        border: 1px solid rgba(245, 158, 11, 0.2);
+    }
+
+    body[data-theme="dark"] .tip-item {
+        background: rgba(30, 41, 59, 0.7);
+    }
+
+    .tip-item.active {
+        display: flex;
+        animation: fadeIn 0.5s ease;
+    }
+
+    .tip-icon {
+        width: 50px;
+        height: 50px;
+        background: var(--warm-orange);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+
+    .tip-content h4 {
+        margin: 0 0 0.5rem 0;
+        font-weight: 600;
+        color: var(--warm-orange);
+    }
+
+    .tip-content p {
+        margin: 0;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        color: #64748b;
+    }
+
+    body[data-theme="dark"] .tip-content p {
+        color: #94a3b8;
+    }
+
+    .tip-controls {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    .tip-btn {
+        width: 40px;
+        height: 40px;
+        border: none;
+        background: var(--warm-orange);
+        color: white;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: var(--transition);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .tip-btn:hover {
+        background: var(--soft-green);
+        transform: scale(1.1);
+    }
+
+    .tip-indicators {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .indicator {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #e2e8f0;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    body[data-theme="dark"] .indicator {
+        background: #374151;
+    }
+
+    .indicator.active {
+        background: var(--warm-orange);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 2rem;
+        color: #64748b;
+    }
+
+    body[data-theme="dark"] .empty-state {
+        color: #94a3b8;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    .empty-state p {
+        font-size: 1.1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-header {
+            flex-direction: column;
+            gap: 1rem;
+            text-align: center;
+        }
+
+        .dashboard-title h1 {
+            font-size: 2rem;
+        }
+
+        .dashboard-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .tools-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .tool-card {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .tip-item {
+            flex-direction: column;
+            text-align: center;
+        }
+    }
+</style>
+
+<script>
+    let currentTip = 0;
+    const tips = document.querySelectorAll('.tip-item');
+    const indicators = document.querySelectorAll('.indicator');
+
+    function showTip(index) {
+        tips.forEach(tip => tip.classList.remove('active'));
+        indicators.forEach(indicator => indicator.classList.remove('active'));
+        
+        tips[index].classList.add('active');
+        indicators[index].classList.add('active');
+    }
+
+    function nextTip() {
+        currentTip = (currentTip + 1) % tips.length;
+        showTip(currentTip);
+    }
+
+    function previousTip() {
+        currentTip = (currentTip - 1 + tips.length) % tips.length;
+        showTip(currentTip);
+    }
+
+    // Auto-rotate tips every 10 seconds
+    setInterval(nextTip, 10000);
+
+    // Click indicators to navigate
+    indicators.forEach((indicator, index) => {
+        indicator.addEventListener('click', () => {
+            currentTip = index;
+            showTip(currentTip);
+        });
+    });
+</script>
+{% endblock %}
