@@ -1,35 +1,501 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Chat{% endblock %}
-{% block css_file %}chat.css{% endblock %}
-{% block js_file %}chat.js{% endblock %}
+{% block title %}Chat - DailyNest{% endblock %}
 
 {% block content %}
+<style>
+/* Modern Chat UI Styles */
+.chat-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 15px 15px 0 0;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.chat-header h1 {
+    margin: 0;
+    font-size: 1.8rem;
+    font-weight: 600;
+}
+
+.chat-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: white;
+    border-radius: 0 0 15px 15px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.chat-messages {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    background: #f8fafc;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.message {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    max-width: 80%;
+    animation: slideIn 0.3s ease-out;
+}
+
+.message.user {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+}
+
+.message.bot {
+    align-self: flex-start;
+}
+
+.message-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.message.user .message-avatar {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.message.bot .message-avatar {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.message-content {
+    background: white;
+    padding: 15px 18px;
+    border-radius: 18px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    position: relative;
+    word-wrap: break-word;
+}
+
+.message.user .message-content {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.message.bot .message-content {
+    background: white;
+    color: #2d3748;
+}
+
+.message-time {
+    font-size: 0.75rem;
+    color: #a0aec0;
+    margin-top: 5px;
+}
+
+.chat-input-container {
+    padding: 20px;
+    background: white;
+    border-top: 1px solid #e2e8f0;
+}
+
+.chat-input-wrapper {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    background: #f7fafc;
+    border-radius: 25px;
+    padding: 8px;
+    border: 2px solid #e2e8f0;
+    transition: border-color 0.3s ease;
+}
+
+.chat-input-wrapper:focus-within {
+    border-color: #667eea;
+}
+
+.message-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 12px 16px;
+    font-size: 16px;
+    outline: none;
+    resize: none;
+    min-height: 20px;
+    max-height: 120px;
+}
+
+.send-button {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    font-size: 18px;
+}
+
+.send-button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.send-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.emotion-status {
+    margin-top: 15px;
+    padding: 15px;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    border-radius: 12px;
+    color: white;
+    text-align: center;
+}
+
+.emotion-indicators {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 10px;
+}
+
+.emotion-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.2);
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+}
+
+.typing-indicator {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    max-width: 80%;
+    align-self: flex-start;
+}
+
+.typing-indicator .message-content {
+    padding: 15px 20px;
+}
+
+.typing-dots {
+    display: flex;
+    gap: 4px;
+}
+
+.typing-dots span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #cbd5e0;
+    animation: typing 1.4s infinite ease-in-out;
+}
+
+.typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+.typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes typing {
+    0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+    40% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .chat-container {
+        padding: 10px;
+        height: calc(100vh - 80px);
+    }
+    
+    .message {
+        max-width: 90%;
+    }
+    
+    .chat-header h1 {
+        font-size: 1.5rem;
+    }
+    
+    .emotion-indicators {
+        flex-direction: column;
+        gap: 10px;
+    }
+}
+
+/* Scrollbar Styling */
+.chat-messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+</style>
 <div class="chat-container">
-    <h1>Emotion-Aware Chat</h1>
+    <div class="chat-header">
+        <h1>🤖 DailyNest AI Chat</h1>
+        <p style="margin: 5px 0 0 0; opacity: 0.9;">Emotion-aware conversations</p>
+    </div>
     
     <div class="chat-wrapper">
         <div class="chat-messages" id="chatMessages">
-            <!-- Messages will appear here -->
+            <div class="message bot">
+                <div class="message-avatar">🤖</div>
+                <div class="message-content">
+                    <div>Hello! I'm DailyNest AI, your emotion-aware companion. I can sense your emotions through your camera and microphone to provide more personalized support. How are you feeling today?</div>
+                    <div class="message-time" id="welcomeTime"></div>
+                </div>
+            </div>
         </div>
         
-        <div class="chat-input">
-            <input type="text" id="messageInput" placeholder="Type your message..." 
-                   aria-label="Type your message" maxlength="500">
-            <button id="sendMessage" class="send-button" type="button">
-                <i class="fas fa-paper-plane"></i>
-                <span class="sr-only">Send message</span>
-            </button>
+        <div class="typing-indicator" id="typingIndicator">
+            <div class="message-avatar">🤖</div>
+            <div class="message-content">
+                <div class="typing-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="chat-input-container">
+            <div class="chat-input-wrapper">
+                <textarea 
+                    id="messageInput" 
+                    class="message-input" 
+                    placeholder="Type your message here..."
+                    rows="1"
+                    maxlength="500"
+                ></textarea>
+                <button id="sendButton" class="send-button" type="button">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
         </div>
     </div>
     
-    <div class="current-emotion">
-        <p>Current Emotion Context:</p>
+    <div class="emotion-status">
+        <div>Current Emotion Context</div>
         <div class="emotion-indicators">
-            <span id="currentFaceEmotion"><i class="fas fa-camera"></i> -</span>
-            <span id="currentVoiceEmotion"><i class="fas fa-microphone"></i> -</span>
+            <div class="emotion-indicator">
+                <i class="fas fa-camera"></i>
+                <span id="faceEmotion">neutral</span>
+            </div>
+            <div class="emotion-indicator">
+                <i class="fas fa-microphone"></i>
+                <span id="voiceEmotion">neutral</span>
+            </div>
         </div>
     </div>
 </div>
+
+<script>
+// Modern Chat JavaScript
+class ChatInterface {
+    constructor() {
+        this.messagesContainer = document.getElementById('chatMessages');
+        this.messageInput = document.getElementById('messageInput');
+        this.sendButton = document.getElementById('sendButton');
+        this.typingIndicator = document.getElementById('typingIndicator');
+        this.faceEmotionSpan = document.getElementById('faceEmotion');
+        this.voiceEmotionSpan = document.getElementById('voiceEmotion');
+        
+        this.init();
+    }
+    
+    init() {
+        // Set welcome message time
+        document.getElementById('welcomeTime').textContent = this.formatTime(new Date());
+        
+        // Event listeners
+        this.sendButton.addEventListener('click', () => this.sendMessage());
+        this.messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.sendMessage();
+            }
+        });
+        
+        // Auto-resize textarea
+        this.messageInput.addEventListener('input', () => {
+            this.messageInput.style.height = 'auto';
+            this.messageInput.style.height = this.messageInput.scrollHeight + 'px';
+        });
+        
+        // Fetch latest emotions periodically
+        setInterval(() => this.updateEmotionContext(), 5000);
+    }
+    
+    async sendMessage() {
+        const message = this.messageInput.value.trim();
+        if (!message) return;
+        
+        // Disable input
+        this.messageInput.disabled = true;
+        this.sendButton.disabled = true;
+        
+        // Add user message
+        this.addMessage('user', message);
+        this.messageInput.value = '';
+        this.messageInput.style.height = 'auto';
+        
+        // Show typing indicator
+        this.showTyping();
+        
+        try {
+            const response = await fetch('/chat-message/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': this.getCsrfToken()
+                },
+                body: JSON.stringify({ message })
+            });
+            
+            const data = await response.json();
+            
+            // Hide typing indicator
+            this.hideTyping();
+            
+            if (data.success) {
+                this.addMessage('bot', data.response);
+                
+                // Update emotion context if provided
+                if (data.emotion_context) {
+                    this.updateEmotionDisplay(data.emotion_context);
+                }
+            } else {
+                this.addMessage('bot', data.response || 'Sorry, I encountered an error. Please try again.');
+            }
+            
+        } catch (error) {
+            console.error('Chat error:', error);
+            this.hideTyping();
+            this.addMessage('bot', 'Sorry, I\'m having trouble connecting. Please try again.');
+        }
+        
+        // Re-enable input
+        this.messageInput.disabled = false;
+        this.sendButton.disabled = false;
+        this.messageInput.focus();
+    }
+    
+    addMessage(sender, content) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${sender}`;
+        
+        const avatar = sender === 'user' ? '👤' : '🤖';
+        const time = this.formatTime(new Date());
+        
+        messageDiv.innerHTML = `
+            <div class="message-avatar">${avatar}</div>
+            <div class="message-content">
+                <div>${this.escapeHtml(content)}</div>
+                <div class="message-time">${time}</div>
+            </div>
+        `;
+        
+        this.messagesContainer.appendChild(messageDiv);
+        this.scrollToBottom();
+    }
+    
+    showTyping() {
+        this.typingIndicator.style.display = 'flex';
+        this.scrollToBottom();
+    }
+    
+    hideTyping() {
+        this.typingIndicator.style.display = 'none';
+    }
+    
+    scrollToBottom() {
+        setTimeout(() => {
+            this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+        }, 100);
+    }
+    
+    formatTime(date) {
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    getCsrfToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+    }
+    
+    updateEmotionContext() {
+        // This would typically fetch from your emotion detection endpoint
+        // For now, we'll just update the display if we have recent data
+    }
+    
+    updateEmotionDisplay(emotionContext) {
+        if (emotionContext.face_emotion) {
+            this.faceEmotionSpan.textContent = emotionContext.face_emotion;
+        }
+        if (emotionContext.voice_emotion) {
+            this.voiceEmotionSpan.textContent = emotionContext.voice_emotion;
+        }
+    }
+}
+
+// Initialize chat when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    new ChatInterface();
+});
+</script>
 {% endblock %}

@@ -6,7 +6,10 @@ import base64
 import tempfile
 import os
 from .models import EmotionRecord, ChatMessage, UserPreference
-from .utils import get_emotion_detector, get_chatbot
+from .ml_models_fallback import get_emotion_detector, get_speech_processor
+
+# Import enhanced chatbot
+from .chatbot_enhanced import get_enhanced_chatbot
 import logging
 
 # Optional imports with fallbacks
@@ -34,7 +37,19 @@ def home(request):
 
 def emotion(request):
     """Emotion detection page view"""
-    preferences, created = UserPreference.objects.get_or_create(id=1)
+    # Get or create preferences for the current user (or default user if anonymous)
+    if request.user.is_authenticated:
+        preferences, created = UserPreference.objects.get_or_create(user=request.user)
+    else:
+        # For anonymous users, try to get the first superuser or create default preferences
+        from django.contrib.auth.models import User
+        default_user = User.objects.filter(is_superuser=True).first()
+        if default_user:
+            preferences, created = UserPreference.objects.get_or_create(user=default_user)
+        else:
+            # Create a minimal context without preferences
+            preferences = None
+    
     context = {
         'preferences': preferences,
     }
@@ -42,7 +57,19 @@ def emotion(request):
 
 def chat(request):
     """Chat page view"""
-    preferences, created = UserPreference.objects.get_or_create(id=1)
+    # Get or create preferences for the current user (or default user if anonymous)
+    if request.user.is_authenticated:
+        preferences, created = UserPreference.objects.get_or_create(user=request.user)
+    else:
+        # For anonymous users, try to get the first superuser or create default preferences
+        from django.contrib.auth.models import User
+        default_user = User.objects.filter(is_superuser=True).first()
+        if default_user:
+            preferences, created = UserPreference.objects.get_or_create(user=default_user)
+        else:
+            # Create a minimal context without preferences
+            preferences = None
+    
     # Get recent chat messages
     recent_messages = ChatMessage.objects.order_by('-timestamp')[:20]
     context = {
@@ -59,29 +86,22 @@ def detect_emotion(request):
             data = json.loads(request.body)
             face_emotion = None
             voice_emotion = None
+            face_confidence = 0.0
+            voice_confidence = 0.0
+            speech_text = None
+            
             detector = get_emotion_detector()
+            speech_processor = get_speech_processor()
 
             # Process face image
             if 'image' in data:
                 try:
-                    if NUMPY_AVAILABLE and CV2_AVAILABLE:
-                        # Decode base64 image
-                        img_data = base64.b64decode(data['image'].split(',')[1])
-                        nparr = np.frombuffer(img_data, np.uint8)
-                        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-                        
-                        if img is not None:
-                            face_emotion = detector.detect_face_emotion(img)
-                        else:
-                            face_emotion = "Error: Invalid image"
-                    else:
-                        face_emotion = detector.detect_face_emotion(None)
-                        
+                    face_emotion, face_confidence = detector.detect_face_emotion(data['image'])
                 except Exception as e:
                     logger.error(f"Face processing error: {str(e)}")
-                    face_emotion = "neutral"
+                    face_emotion, face_confidence = "neutral", 0.0
 
-            # Process audio
+            # Process audio with speech recognition
             if 'audio' in data:
                 try:
                     # Decode base64 audio
@@ -92,29 +112,35 @@ def detect_emotion(request):
                         temp_audio.write(audio_data)
                         temp_audio_path = temp_audio.name
                     
-                    # Process audio
-                    voice_emotion = detector.detect_voice_emotion(temp_audio_path)
+                    # Process audio for speech and emotion
+                    speech_text, voice_emotion, voice_confidence = speech_processor.process_audio_file(temp_audio_path)
                     
                     # Clean up
                     os.unlink(temp_audio_path)
                     
                 except Exception as e:
                     logger.error(f"Audio processing error: {str(e)}")
-                    voice_emotion = f"Error: {str(e)}"
+                    voice_emotion, voice_confidence = "neutral", 0.0
+                    speech_text = None
 
-            # Save emotion record
+            # Save emotion record with confidence scores
             record = EmotionRecord.objects.create(
-                face_emotion=face_emotion,
-                voice_emotion=voice_emotion,
-                notes=f"Face: {face_emotion}, Voice: {voice_emotion}"
+                face_emotion=face_emotion if face_emotion and not face_emotion.startswith('Error') else None,
+                voice_emotion=voice_emotion if voice_emotion and not voice_emotion.startswith('Error') else None,
+                face_confidence=face_confidence,
+                voice_confidence=voice_confidence,
+                notes=f"Face: {face_emotion or 'None'} ({face_confidence:.2f}), Voice: {voice_emotion or 'None'} ({voice_confidence:.2f}), Speech: {speech_text or 'None'}"
             )
 
             return JsonResponse({
                 'success': True,
                 'face_emotion': face_emotion or "No face detected",
                 'voice_emotion': voice_emotion or "No voice detected",
+                'speech_text': speech_text or "No speech detected",
+                'face_confidence': face_confidence,
+                'voice_confidence': voice_confidence,
                 'record_id': record.id,
-                'confidence': 'high' if face_emotion and 'Error' not in face_emotion else 'low'
+                'confidence': 'high' if (face_confidence > 0.6 or voice_confidence > 0.6) else 'low'
             })
 
         except Exception as e:
@@ -157,13 +183,20 @@ def chat_message(request):
                 emotion_context=latest_emotion
             )
             
-            # Get chatbot response
-            chatbot = get_chatbot()
-            bot_response = chatbot.get_response(
-                message=user_message,
-                face_emotion=face_emotion,
-                voice_emotion=voice_emotion
-            )
+            # Get chatbot response using enhanced Ollama integration
+            try:
+                chatbot = get_enhanced_chatbot(model_name="gemma:2b")  # Using your installed gemma:2b model
+                bot_response = chatbot.get_response(
+                    message=user_message,
+                    face_emotion=face_emotion,
+                    voice_emotion=voice_emotion,
+                    face_confidence=getattr(latest_emotion, 'face_confidence', 0.0),
+                    voice_confidence=getattr(latest_emotion, 'voice_confidence', 0.0),
+                    speech_text=getattr(latest_emotion, 'notes', '').split('Speech: ')[-1] if latest_emotion and 'Speech: ' in getattr(latest_emotion, 'notes', '') else None
+                )
+            except Exception as e:
+                print(f"Chatbot error: {e}")
+                bot_response = "I'm having trouble connecting to the local AI. Please make sure Ollama is running."
             
             # Save bot response
             bot_chat_message = ChatMessage.objects.create(
@@ -198,7 +231,21 @@ def update_preferences(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            preferences, created = UserPreference.objects.get_or_create(id=1)
+            
+            # Get or create preferences for the current user (or default user if anonymous)
+            if request.user.is_authenticated:
+                preferences, created = UserPreference.objects.get_or_create(user=request.user)
+            else:
+                # For anonymous users, try to get the first superuser
+                from django.contrib.auth.models import User
+                default_user = User.objects.filter(is_superuser=True).first()
+                if default_user:
+                    preferences, created = UserPreference.objects.get_or_create(user=default_user)
+                else:
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'No user available for preferences'
+                    }, status=400)
             
             # Update preferences
             if 'theme' in data:

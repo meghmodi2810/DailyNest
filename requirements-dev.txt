@@ -1,0 +1,6 @@
+# Development and testing dependencies
+pytest>=7.0.0
+pytest-django>=4.5.0
+requests>=2.31.0
+numpy>=1.24.0
+Pillow>=10.0.0 

@@ -226,16 +226,18 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const response = await fetch('/detect-emotion/', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        audio: reader.result
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ audio: reader.result })
                 });
-
+    
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+    
                 const data = await response.json();
-                if (data.voice_emotion) {
+                if (data.error) {
+                    showEmotionResult(voiceEmotion, `Error: ${data.error}`);
+                } else {
                     showEmotionResult(voiceEmotion, data.voice_emotion);
                     emotionResults.classList.remove('hidden');
                 }
@@ -246,10 +248,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 setButtonState(startAudio, false);
             }
         };
-
+    
         reader.readAsDataURL(audioBlob);
     }
-
+    
     async function sendMessageToBot() {
         const message = messageInput.value.trim();
         if (!message) return;

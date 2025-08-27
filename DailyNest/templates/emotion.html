@@ -751,12 +751,20 @@ function detectEmotion(data) {
     .then(result => {
         if (result.success) {
             const emotion = currentMode === 'face' ? result.face_emotion : result.voice_emotion;
-            const confidence = result.confidence === 'high' ? 85 : 60;
+            const face_confidence = result.face_confidence || 0;
+            const voice_confidence = result.voice_confidence || 0;
+            const confidence = currentMode === 'face' ? (face_confidence * 100) : (voice_confidence * 100);
             updateEmotionDisplay(emotion, confidence, emotion);
             addToHistory(emotion, confidence, currentMode);
             updateInsights(emotion);
+            
+            // Show speech text if available
+            if (result.speech_text && result.speech_text !== "No speech detected") {
+                document.getElementById('audioStatus').textContent = `Speech: "${result.speech_text}"`;
+            }
         } else {
             updateEmotionDisplay('Detection failed', 0, 'neutral');
+            console.error('Detection error:', result.error);
         }
     })
     .catch(error => {
@@ -766,8 +774,8 @@ function detectEmotion(data) {
 }
 
 function updateEmotionDisplay(emotion, confidence, iconType) {
-    document.getElementById('emotionLabel').textContent = emotion;
-    document.getElementById('confidenceFill').style.width = confidence + '%';
+    document.getElementById('emotionText').textContent = emotion;
+    document.getElementById('confidenceBar').style.width = confidence + '%';
     document.getElementById('confidenceText').textContent = confidence + '%';
     
     const iconMap = {
