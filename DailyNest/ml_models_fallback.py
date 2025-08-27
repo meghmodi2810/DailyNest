@@ -63,8 +63,11 @@ class FallbackEmotionDetector:
             
             # Detect faces
             faces = self._detect_faces(image)
-            if not faces:
+            if faces is None or len(faces) == 0:
                 return "neutral", 0.1
+            
+            # Ensure iterable of tuples
+            faces = [tuple(f) for f in faces]
             
             # Process the largest face
             largest_face = max(faces, key=lambda x: x[2] * x[3])
