@@ -38,114 +38,14 @@
                     <p>Talk with your emotion-aware AI friend</p>
                 </div>
             </a>
-        </div>
-    </div>
-
-    <!-- Games Section -->
-    <div class="card featured-card games-section">
-        <h3><i class="fas fa-gamepad"></i> Your Games</h3>
-        <p class="section-description">Fun and therapeutic games to help you relax and develop skills</p>
-        
-        <div class="games-grid">
-            <div class="game-card" data-game="bubble_pop">
-                <div class="game-icon" style="background: var(--calm-blue);">
-                    <i class="fas fa-bubbles"></i>
+            <a href="{% url 'games_dashboard' %}" class="tool-card secondary">
+                <div class="tool-icon">
+                    <i class="fas fa-gamepad"></i>
                 </div>
-                <div class="game-content">
-                    <h4>Bubble Pop</h4>
-                    <p>A calming bubble popping game to reduce stress</p>
-                    <div class="game-meta">
-                        <span class="difficulty easy">Easy</span>
-                        <span class="game-type">Relaxation</span>
-                    </div>
+                <div class="tool-content">
+                    <h4>Games</h4>
+                    <p>Play therapeutic games and track progress</p>
                 </div>
-                <div class="game-actions">
-                    <button class="btn btn-primary btn-sm play-game" data-game="bubble_pop">
-                        <i class="fas fa-play"></i> Play
-                    </button>
-                </div>
-            </div>
-
-            <div class="game-card" data-game="memory_match">
-                <div class="game-icon" style="background: var(--soft-green);">
-                    <i class="fas fa-brain"></i>
-                </div>
-                <div class="game-content">
-                    <h4>Memory Match</h4>
-                    <p>Improve memory and concentration skills</p>
-                    <div class="game-meta">
-                        <span class="difficulty medium">Medium</span>
-                        <span class="game-type">Cognitive</span>
-                    </div>
-                </div>
-                <div class="game-actions">
-                    <button class="btn btn-primary btn-sm play-game" data-game="memory_match">
-                        <i class="fas fa-play"></i> Play
-                    </button>
-                </div>
-            </div>
-
-            <div class="game-card" data-game="puzzle_solve">
-                <div class="game-icon" style="background: var(--gentle-purple);">
-                    <i class="fas fa-puzzle-piece"></i>
-                </div>
-                <div class="game-content">
-                    <h4>Puzzle Solve</h4>
-                    <p>Logical thinking and problem-solving challenges</p>
-                    <div class="game-meta">
-                        <span class="difficulty medium">Medium</span>
-                        <span class="game-type">Logic</span>
-                    </div>
-                </div>
-                <div class="game-actions">
-                    <button class="btn btn-primary btn-sm play-game" data-game="puzzle_solve">
-                        <i class="fas fa-play"></i> Play
-                    </button>
-                </div>
-            </div>
-
-            <div class="game-card" data-game="calm_colors">
-                <div class="game-icon" style="background: var(--warm-orange);">
-                    <i class="fas fa-palette"></i>
-                </div>
-                <div class="game-content">
-                    <h4>Calm Colors</h4>
-                    <p>Relaxing color therapy and mindfulness</p>
-                    <div class="game-meta">
-                        <span class="difficulty easy">Easy</span>
-                        <span class="game-type">Mindfulness</span>
-                    </div>
-                </div>
-                <div class="game-actions">
-                    <button class="btn btn-primary btn-sm play-game" data-game="calm_colors">
-                        <i class="fas fa-play"></i> Play
-                    </button>
-                </div>
-            </div>
-
-            <div class="game-card" data-game="breathing_exercise">
-                <div class="game-icon" style="background: var(--soothing-teal);">
-                    <i class="fas fa-wind"></i>
-                </div>
-                <div class="game-content">
-                    <h4>Breathing Exercise</h4>
-                    <p>Guided breathing for relaxation and focus</p>
-                    <div class="game-meta">
-                        <span class="difficulty easy">Easy</span>
-                        <span class="game-type">Wellness</span>
-                    </div>
-                </div>
-                <div class="game-actions">
-                    <button class="btn btn-primary btn-sm play-game" data-game="breathing_exercise">
-                        <i class="fas fa-play"></i> Play
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <div class="games-footer">
-            <a href="{% url 'games_dashboard' %}" class="btn btn-secondary">
-                <i class="fas fa-trophy"></i> View All Games & Progress
             </a>
         </div>
     </div>
@@ -533,6 +433,11 @@
 
     .tool-card.secondary {
         background: var(--secondary-gradient);
+        color: white;
+    }
+
+    .tool-card.tertiary {
+        background: var(--accent-gradient);
         color: white;
     }
 

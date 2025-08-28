@@ -333,10 +333,8 @@ class ScheduledNote(models.Model):
 class GameProgress(models.Model):
     """Model to track user progress in games"""
     GAME_CHOICES = [
+        ('guess_the_bowl', 'Guess The Bowl'),
         ('bubble_pop', 'Bubble Pop'),
-        ('memory_match', 'Memory Match'),
-        ('puzzle_solve', 'Puzzle Solve'),
-        ('calm_colors', 'Calm Colors'),
         ('breathing_exercise', 'Breathing Exercise'),
     ]
     

@@ -940,35 +940,19 @@ def games_dashboard(request):
         'total_time': total_time,
         'available_games': [
             {
+                'id': 'guess_the_bowl',
+                'name': 'Guess The Bowl',
+                'description': 'Guess which bowl hides the ball after shuffling',
+                'icon': 'fas fa-bowl-food',
+                'color': 'var(--calm-blue)',
+                'difficulty': 'Medium'
+            },
+            {
                 'id': 'bubble_pop',
                 'name': 'Bubble Pop',
                 'description': 'A calming bubble popping game to reduce stress',
                 'icon': 'fas fa-bubbles',
-                'color': 'var(--calm-blue)',
-                'difficulty': 'Easy'
-            },
-            {
-                'id': 'memory_match',
-                'name': 'Memory Match',
-                'description': 'Improve memory and concentration skills',
-                'icon': 'fas fa-brain',
                 'color': 'var(--soft-green)',
-                'difficulty': 'Medium'
-            },
-            {
-                'id': 'puzzle_solve',
-                'name': 'Puzzle Solve',
-                'description': 'Logical thinking and problem-solving challenges',
-                'icon': 'fas fa-puzzle-piece',
-                'color': 'var(--gentle-purple)',
-                'difficulty': 'Medium'
-            },
-            {
-                'id': 'calm_colors',
-                'name': 'Calm Colors',
-                'description': 'Relaxing color therapy and mindfulness',
-                'icon': 'fas fa-palette',
-                'color': 'var(--warm-orange)',
                 'difficulty': 'Easy'
             },
             {
@@ -1005,10 +989,8 @@ def play_game(request, game_type):
     
     # Get game template based on type
     game_templates = {
+        'guess_the_bowl': 'games/guess_the_bowl.html',
         'bubble_pop': 'games/bubble_pop.html',
-        'memory_match': 'games/memory_match.html',
-        'puzzle_solve': 'games/puzzle_solve.html',
-        'calm_colors': 'games/calm_colors.html',
         'breathing_exercise': 'games/breathing_exercise.html',
     }
     

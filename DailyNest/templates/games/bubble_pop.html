@@ -29,6 +29,13 @@
             <i class="fas fa-bubbles"></i>
             <span id="bubbles-left">0</span>
         </div>
+        <div class="difficulty">
+            <span>Level:</span>
+            <button class="btn btn-secondary btn-sm level-btn" data-level="easy">Easy</button>
+            <button class="btn btn-secondary btn-sm level-btn" data-level="medium">Medium</button>
+            <button class="btn btn-secondary btn-sm level-btn" data-level="hard">Hard</button>
+            <span id="levelLabel" class="level-label">Easy</span>
+        </div>
     </div>
 
     <div class="game-area">
@@ -69,8 +76,7 @@
             <ul>
                 <li>Click on bubbles to pop them</li>
                 <li>Different colored bubbles give different points</li>
-                <li>Try to pop as many as you can!</li>
-                <li>Take deep breaths while playing</li>
+                <li>Select a level: Easy, Medium, or Hard</li>
             </ul>
             <button id="startGameBtn" class="btn btn-primary btn-lg">
                 <i class="fas fa-play"></i> Start Game
@@ -299,6 +305,9 @@
         border-radius: var(--border-radius-lg);
     }
 
+    .difficulty{display:flex;align-items:center;gap:.5rem}
+    .level-label{font-weight:600;color:var(--calm-blue)}
+
     @media (max-width: 768px) {
         .game-header {
             flex-direction: column;
@@ -347,12 +356,14 @@
     let sessionStartTime;
     let bubblesPopped = 0;
     let totalBubbles = 0;
-    
-    // Game configuration
-    const GAME_DURATION = 60000; // 60 seconds
-    const BUBBLE_SPAWN_RATE = 1000; // 1 second
-    const MAX_BUBBLES = 20;
-    
+
+    const LEVELS = {
+        easy:   { durationMs: 60000, spawnMs: 1200, maxBubbles: 15 },
+        medium: { durationMs: 60000, spawnMs: 900,  maxBubbles: 22 },
+        hard:   { durationMs: 60000, spawnMs: 650,  maxBubbles: 30 },
+    };
+    let currentLevel = 'easy';
+
     // Colors for different bubble types
     const BUBBLE_COLORS = [
         { color: '#a3c4f3', points: 10, probability: 0.4 },   // Blue - Common
@@ -367,9 +378,9 @@
             this.x = Math.random() * (canvas.width - this.radius * 2) + this.radius;
             this.y = canvas.height + this.radius;
             this.speed = Math.random() * 2 + 1;
-            this.color = this.getRandomColor();
-            this.points = this.color.points;
-            this.color = this.color.color;
+            const bt = this.getRandomColor();
+            this.points = bt.points;
+            this.color = bt.color;
             this.opacity = 0.8;
             this.popped = false;
         }
@@ -415,15 +426,11 @@
     function initGame() {
         canvas = document.getElementById('gameCanvas');
         ctx = canvas.getContext('2d');
-        
-        // Set canvas size
-        canvas.width = 800;
-        canvas.height = 600;
-        
-        // Add click event listener
+        canvas.width = 800; canvas.height = 600;
         canvas.addEventListener('click', handleCanvasClick);
-        
-        // Initialize game elements
+        document.querySelectorAll('.level-btn').forEach(btn=>{
+            btn.addEventListener('click',()=>{ currentLevel = btn.dataset.level; document.getElementById('levelLabel').textContent = currentLevel.charAt(0).toUpperCase()+currentLevel.slice(1); });
+        });
         resetGame();
     }
 
@@ -434,7 +441,6 @@
         bubblesPopped = 0;
         totalBubbles = 0;
         gameRunning = false;
-        
         updateUI();
         hideGameOverlay();
         showInstructions();
@@ -444,59 +450,33 @@
         gameRunning = true;
         sessionStartTime = Date.now();
         hideInstructions();
-        
-        // Start game loop
-        gameInterval = setInterval(gameLoop, 16); // 60 FPS
+        gameInterval = setInterval(gameLoop, 16);
         timeInterval = setInterval(updateTimer, 1000);
-        
-        // Start spawning bubbles
-        setTimeout(spawnBubble, 1000);
+        spawnLoop();
+    }
+
+    function spawnLoop(){
+        const {spawnMs, maxBubbles} = LEVELS[currentLevel];
+        if(!gameRunning) return;
+        if (bubbles.length < maxBubbles) { bubbles.push(new Bubble()); totalBubbles++; }
+        setTimeout(spawnLoop, spawnMs);
+        if(Date.now() - sessionStartTime >= LEVELS[currentLevel].durationMs){ endGame(); }
     }
 
     function gameLoop() {
         if (!gameRunning) return;
-        
-        // Clear canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Update and draw bubbles
-        bubbles = bubbles.filter(bubble => !bubble.popped);
-        bubbles.forEach(bubble => {
-            bubble.update();
-            bubble.draw();
-        });
-        
-        // Spawn new bubbles
-        if (bubbles.length < MAX_BUBBLES && Math.random() < 0.02) {
-            spawnBubble();
-        }
-        
-        // Check game end
-        if (Date.now() - sessionStartTime >= GAME_DURATION) {
-            endGame();
-        }
-    }
-
-    function spawnBubble() {
-        if (bubbles.length < MAX_BUBBLES) {
-            bubbles.push(new Bubble());
-            totalBubbles++;
-        }
+        bubbles = bubbles.filter(b => !b.popped);
+        bubbles.forEach(b => { b.update(); b.draw(); });
     }
 
     function handleCanvasClick(event) {
         if (!gameRunning) return;
-        
         const rect = canvas.getBoundingClientRect();
         const mouseX = event.clientX - rect.left;
         const mouseY = event.clientY - rect.top;
-        
-        // Check if any bubble was clicked
         for (let i = bubbles.length - 1; i >= 0; i--) {
-            if (bubbles[i].isClicked(mouseX, mouseY)) {
-                popBubble(i);
-                break;
-            }
+            if (bubbles[i].isClicked(mouseX, mouseY)) { popBubble(i); break; }
         }
     }
 
@@ -505,69 +485,33 @@
         bubble.popped = true;
         score += bubble.points;
         bubblesPopped++;
-        
         updateUI();
-        
-        // Add pop effect
-        createPopEffect(bubble.x, bubble.y);
-    }
-
-    function createPopEffect(x, y) {
-        // Simple pop effect with particles
-        for (let i = 0; i < 8; i++) {
-            const angle = (Math.PI * 2 * i) / 8;
-            const velocity = 3;
-            const particle = {
-                x: x,
-                y: y,
-                vx: Math.cos(angle) * velocity,
-                vy: Math.sin(angle) * velocity,
-                life: 30
-            };
-            
-            // Draw particle
-            ctx.save();
-            ctx.globalAlpha = 0.8;
-            ctx.fillStyle = '#ffffff';
-            ctx.beginPath();
-            ctx.arc(particle.x, particle.y, 2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
-        }
     }
 
     function updateTimer() {
         if (!gameRunning) return;
-        
         gameTime++;
         const minutes = Math.floor(gameTime / 60);
         const seconds = gameTime % 60;
-        document.getElementById('timer').textContent = 
-            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        document.getElementById('timer').textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
 
     function updateUI() {
         document.getElementById('score').textContent = score;
         document.getElementById('bubbles-left').textContent = bubbles.length;
+        document.getElementById('levelLabel').textContent = currentLevel.charAt(0).toUpperCase()+currentLevel.slice(1);
     }
 
     function endGame() {
+        if(!gameRunning) return;
         gameRunning = false;
         clearInterval(gameInterval);
         clearInterval(timeInterval);
-        
-        // Calculate final stats
         const finalTime = Math.floor((Date.now() - sessionStartTime) / 1000);
-        
-        // Update overlay
         document.getElementById('finalScore').textContent = score;
         document.getElementById('finalTime').textContent = formatTime(finalTime);
         document.getElementById('finalBubbles').textContent = bubblesPopped;
-        
-        // Show game over overlay
         showGameOverlay();
-        
-        // Save game results
         saveGameResults(score, finalTime);
     }
 
@@ -577,51 +521,19 @@
         return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
     }
 
-    function showGameOverlay() {
-        document.getElementById('gameOverlay').classList.remove('hidden');
-    }
-
-    function hideGameOverlay() {
-        document.getElementById('gameOverlay').classList.add('hidden');
-    }
-
-    function showInstructions() {
-        document.getElementById('instructions').style.display = 'block';
-    }
-
-    function hideInstructions() {
-        document.getElementById('instructions').style.display = 'none';
-    }
+    function showGameOverlay() { document.getElementById('gameOverlay').classList.remove('hidden'); }
+    function hideGameOverlay() { document.getElementById('gameOverlay').classList.add('hidden'); }
+    function showInstructions(){ document.getElementById('instructions').style.display='block'; }
+    function hideInstructions(){ document.getElementById('instructions').style.display='none'; }
 
     async function saveGameResults(finalScore, finalTime) {
         try {
             const response = await fetch('{% url "save_game_result" %}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                body: JSON.stringify({
-                    session_id: {{ session_id }},
-                    score: finalScore,
-                    duration: finalTime,
-                    game_type: '{{ game_type }}',
-                    session_data: {
-                        bubbles_popped: bubblesPopped,
-                        total_bubbles: totalBubbles
-                    }
-                })
+                method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                body: JSON.stringify({ session_id: {{ session_id }}, score: finalScore, duration: finalTime, game_type: '{{ game_type }}', session_data: { bubbles_popped: bubblesPopped, total_bubbles: totalBubbles, level: currentLevel } })
             });
-            
-            const result = await response.json();
-            if (result.success) {
-                console.log('Game results saved successfully');
-            } else {
-                console.error('Failed to save game results:', result.error);
-            }
-        } catch (error) {
-            console.error('Error saving game results:', error);
-        }
+            await response.json();
+        } catch (error) { console.error('Error saving game results:', error); }
     }
 
     function getCookie(name) {
@@ -639,14 +551,8 @@
         return cookieValue;
     }
 
-    // Event listeners
     document.getElementById('startGameBtn').addEventListener('click', startGame);
-    document.getElementById('playAgainBtn').addEventListener('click', () => {
-        resetGame();
-        startGame();
-    });
-
-    // Initialize game when page loads
+    document.getElementById('playAgainBtn').addEventListener('click', () => { resetGame(); startGame(); });
     document.addEventListener('DOMContentLoaded', initGame);
 </script>
 {% endblock %} 

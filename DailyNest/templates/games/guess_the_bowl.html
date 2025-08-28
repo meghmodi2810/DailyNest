@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+
+{% block title %}Guess the Bowl - DailyNest{% endblock %}
+
+{% block content %}
+<div class="game-container">
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Menu Screen -->
+    <div id="menuScreen" class="ui-overlay">
+        <h1>Guess the Bowl</h1>
+        <p>Watch carefully as the bowls shuffle, then find the ball!</p>
+        <div class="level-selection">
+            <button class="easy-btn" data-level="easy">Easy (3 bowls)</button>
+            <button class="medium-btn" data-level="medium">Medium (4 bowls)</button>
+            <button class="hard-btn" data-level="hard">Hard (5 bowls)</button>
+        </div>
+    </div>
+
+    <!-- Game UI -->
+    <div id="gameUI" class="game-ui hidden">
+        <div class="score-display">Score: <span id="score">0</span></div>
+        <div class="round-display">Round: <span id="round">1</span></div>
+        <div class="level-display">Level: <span id="level">Easy</span></div>
+    </div>
+
+    <!-- Instruction -->
+    <div id="instruction" class="instruction hidden"></div>
+
+    <!-- Result Popup -->
+    <div id="resultPopup" class="result-popup hidden">
+        <div id="resultTitle" class="win-text">You Win!</div>
+        <p id="resultMessage">You found the ball!</p>
+        <div style="margin: 20px 0;">
+            <button id="nextRoundBtn" class="primary-btn">Next Round</button>
+            <button id="menuBtn" class="primary-btn">Menu</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+
+    :root {
+        --calm-blue: #a3c4f3;
+        --calm-pink: #e0bcf7;
+        --calm-green: #b9fbc0;
+        --calm-yellow: #ffeb99;
+        --dark-text: #2c3e50;
+        --bubble-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    .game-container {
+        position: relative;
+        width: 90vmin;
+        height: 90vmin;
+        max-width: 800px;
+        max-height: 800px;
+        border-radius: 20px;
+        background-color: rgba(255, 255, 255, 0.7);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        margin: 0 auto;
+    }
+
+    #gameCanvas { width: 100%; height: 100%; border-radius: 20px; cursor: pointer; }
+
+    .ui-overlay {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        display: flex; flex-direction: column; justify-content: center; align-items: center;
+        text-align: center; background: rgba(255, 255, 255, 0.95); border-radius: 20px; transition: opacity 0.5s ease-in-out;
+    }
+
+    .hidden { opacity: 0; pointer-events: none; }
+
+    .game-ui { position: absolute; top: 20px; left: 20px; right: 20px; display: flex; justify-content: space-between; align-items: center; z-index: 10; }
+
+    .score-display, .round-display, .level-display { font-size: 1.2rem; font-weight: 600; color: var(--dark-text); padding: 10px 15px; background: rgba(255, 255, 255, 0.9); border-radius: 15px; box-shadow: var(--bubble-shadow); }
+
+    h1 { font-size: 3rem; font-weight: 600; margin-bottom: 10px; background: linear-gradient(45deg, var(--calm-blue), var(--calm-pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+    p { font-size: 1.2rem; margin: 10px 0; max-width: 80%; line-height: 1.5; }
+
+    button { padding: 15px 30px; margin: 10px; font-size: 1.2rem; font-weight: 600; color: white; border: none; border-radius: 50px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2); cursor: pointer; transition: all 0.2s ease; }
+    button:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3); }
+    button:active { transform: translateY(0); box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2); }
+
+    .easy-btn { background: linear-gradient(45deg, var(--calm-green), #90ee90); }
+    .medium-btn { background: linear-gradient(45deg, var(--calm-yellow), #ffd700); }
+    .hard-btn { background: linear-gradient(45deg, var(--calm-pink), #ff69b4); }
+    .primary-btn { background: linear-gradient(45deg, var(--calm-blue), var(--calm-pink)); }
+
+    .instruction { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.7); color: white; padding: 10px 20px; border-radius: 25px; font-size: 1.1rem; font-weight: 600; z-index: 10; }
+
+    .bowl { position: absolute; cursor: pointer; transition: all 0.3s ease; }
+    .bowl:hover { transform: scale(1.05); }
+
+    .result-popup { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(255, 255, 255, 0.95); padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); text-align: center; z-index: 20; min-width: 300px; }
+    .win-text { color: var(--calm-green); font-size: 2.5rem; margin-bottom: 10px; }
+    .lose-text { color: var(--calm-pink); font-size: 2.5rem; margin-bottom: 10px; }
+
+    @media (max-width: 768px) { h1 { font-size: 2rem; } p { font-size: 1rem; } button { padding: 12px 25px; font-size: 1rem; } .game-ui { flex-direction: column; gap: 10px; } .score-display, .round-display, .level-display { font-size: 1rem; } }
+</style>
+
+<script>
+// Game variables
+let canvas, ctx;
+let gameState = 'menu';
+let currentLevel = 'easy';
+let score = 0;
+let round = 1;
+let bowls = [];
+let ballPosition = 0;
+let selectedBowl = null;
+let isAnimating = false;
+
+// Level configurations
+const levels = { easy: { bowls: 3, swaps: 5, speed: 800 }, medium: { bowls: 4, swaps: 8, speed: 600 }, hard: { bowls: 5, swaps: 12, speed: 400 } };
+
+// Audio context for sound effects
+let audioContext;
+function createPopSound() {
+    if (!audioContext) { audioContext = new (window.AudioContext || window.webkitAudioContext)(); }
+    try {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        oscillator.connect(gainNode); gainNode.connect(audioContext.destination);
+        oscillator.type = 'sine'; oscillator.frequency.setValueAtTime(600, audioContext.currentTime); oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.1);
+        gainNode.gain.setValueAtTime(0.2, audioContext.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.2);
+        oscillator.start(audioContext.currentTime); oscillator.stop(audioContext.currentTime + 0.2);
+    } catch (error) { console.log('Audio not available'); }
+}
+
+// Bowl class
+class Bowl {
+    constructor(x, y, index) { this.x = x; this.y = y; this.index = index; this.width = 120; this.height = 80; this.isLifted = false; }
+    draw() {
+        const liftOffset = this.isLifted ? -40 : 0; const y = this.y + liftOffset;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; ctx.fillRect(this.x + 5, this.y + 5, this.width, this.height);
+        ctx.fillStyle = '#a3c4f3'; ctx.fillRect(this.x, y, this.width, this.height);
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(this.x + 10, y + 10, this.width - 20, this.height - 20);
+        ctx.fillStyle = '#e8f4ff'; ctx.fillRect(this.x + 20, y + 20, this.width - 40, this.height - 40);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; ctx.fillRect(this.x + 15, y + 15, 30, 20);
+    }
+    contains(x, y) { return x >= this.x && x <= this.x + this.width && y >= this.y && y <= this.y + this.height; }
+}
+
+function initGame() {
+    canvas = document.getElementById('gameCanvas'); ctx = canvas.getContext('2d');
+    const container = document.querySelector('.game-container'); canvas.width = container.clientWidth; canvas.height = container.clientHeight;
+    canvas.addEventListener('click', handleCanvasClick);
+    document.querySelectorAll('[data-level]').forEach(btn => { btn.addEventListener('click', (e) => { currentLevel = e.target.dataset.level; startGame(); }); });
+    document.getElementById('nextRoundBtn').addEventListener('click', nextRound);
+    document.getElementById('menuBtn').addEventListener('click', returnToMenu);
+    showMenu();
+}
+
+function showMenu() { gameState = 'menu'; score = 0; round = 1; updateUI(); document.getElementById('menuScreen').classList.remove('hidden'); document.getElementById('gameUI').classList.add('hidden'); document.getElementById('instruction').classList.add('hidden'); document.getElementById('resultPopup').classList.add('hidden'); ctx.clearRect(0, 0, canvas.width, canvas.height); }
+
+function startGame() { gameState = 'show_ball'; document.getElementById('menuScreen').classList.add('hidden'); document.getElementById('gameUI').classList.remove('hidden'); updateUI(); setupRound(); }
+
+function setupRound() {
+    bowls = []; const config = levels[currentLevel]; const bowlCount = config.bowls; const spacing = canvas.width / (bowlCount + 1); const y = canvas.height * 0.6;
+    for (let i = 0; i < bowlCount; i++) { const x = spacing * (i + 1) - 60; bowls.push(new Bowl(x, y, i)); }
+    ballPosition = Math.floor(Math.random() * bowlCount); showBall();
+}
+
+function showBall() { gameState = 'show_ball'; bowls[ballPosition].isLifted = true; const el=document.getElementById('instruction'); el.classList.remove('hidden'); el.textContent = `The ball is under bowl ${ballPosition + 1}. Click to continue.`; drawGame(); setTimeout(() => { if (gameState === 'show_ball') { startShuffle(); } }, 2000); }
+
+function startShuffle() { gameState = 'shuffle'; isAnimating = true; bowls[ballPosition].isLifted = false; document.getElementById('instruction').textContent = 'Watch carefully!'; const config = levels[currentLevel]; performShuffles(config.swaps, config.speed); }
+
+async function performShuffles(swapCount, speed) {
+    for (let i = 0; i < swapCount; i++) {
+        let bowl1, bowl2; do { bowl1 = Math.floor(Math.random() * bowls.length); bowl2 = Math.floor(Math.random() * bowls.length); } while (bowl1 === bowl2);
+        await animateSwap(bowl1, bowl2, speed);
+        if (ballPosition === bowl1) { ballPosition = bowl2; } else if (ballPosition === bowl2) { ballPosition = bowl1; }
+    }
+    gameState = 'guess'; isAnimating = false; document.getElementById('instruction').textContent = 'Click on a bowl to guess where the ball is!';
+}
+
+function animateSwap(index1, index2, duration) {
+    return new Promise(resolve => {
+        const bowl1 = bowls[index1]; const bowl2 = bowls[index2]; const startX1 = bowl1.x; const startX2 = bowl2.x; const startTime = Date.now();
+        function animate() { const elapsed = Date.now() - startTime; const progress = Math.min(elapsed / duration, 1); const ease = 0.5 - 0.5 * Math.cos(progress * Math.PI); const arcHeight = 60; const yOffset = arcHeight * Math.sin(progress * Math.PI); bowl1.x = startX1 + (startX2 - startX1) * ease; bowl1.y = canvas.height * 0.6 - yOffset; bowl2.x = startX2 + (startX1 - startX2) * ease; bowl2.y = canvas.height * 0.6 - yOffset; drawGame(); if (progress < 1) { requestAnimationFrame(animate); } else { [bowls[index1], bowls[index2]] = [bowls[index2], bowls[index1]]; bowl1.y = canvas.height * 0.6; bowl2.y = canvas.height * 0.6; resolve(); } }
+        animate();
+    });
+}
+
+function handleCanvasClick(event) { if (isAnimating) return; const rect = canvas.getBoundingClientRect(); const x = event.clientX - rect.left; const y = event.clientY - rect.top; if (gameState === 'show_ball') { startShuffle(); } else if (gameState === 'guess') { for (let i = 0; i < bowls.length; i++) { if (bowls[i].contains(x, y)) { selectedBowl = i; revealResult(i); break; } } } }
+
+function revealResult(guessedBowl) { gameState = 'reveal'; isAnimating = true; bowls[guessedBowl].isLifted = true; if (guessedBowl !== ballPosition) { bowls[ballPosition].isLifted = true; } document.getElementById('instruction').classList.add('hidden'); createPopSound(); drawGame(); setTimeout(() => { const isWin = guessedBowl === ballPosition; if (isWin) { score += 10; } showResult(isWin); updateUI(); isAnimating = false; }, 1000); }
+
+function showResult(isWin) { const popup = document.getElementById('resultPopup'); const title = document.getElementById('resultTitle'); const message = document.getElementById('resultMessage'); if (isWin) { title.textContent = 'You Win!'; title.className = 'win-text'; message.textContent = 'You found the ball!'; } else { title.textContent = 'You Lose!'; title.className = 'lose-text'; message.textContent = `The ball was under bowl ${ballPosition + 1}`; } popup.classList.remove('hidden'); }
+
+function nextRound() { round++; document.getElementById('resultPopup').classList.add('hidden'); setupRound(); }
+
+function returnToMenu() { showMenu(); }
+
+function updateUI() { document.getElementById('score').textContent = score; document.getElementById('round').textContent = round; document.getElementById('level').textContent = currentLevel.charAt(0).toUpperCase() + currentLevel.slice(1); }
+
+function drawGame() { ctx.clearRect(0, 0, canvas.width, canvas.height); const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height); gradient.addColorStop(0, '#f7f3e8'); gradient.addColorStop(1, '#e8f7f3'); ctx.fillStyle = gradient; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; ctx.fillRect(0, canvas.height * 0.55, canvas.width, canvas.height * 0.45); bowls.forEach(bowl => bowl.draw()); if (gameState === 'show_ball' || gameState === 'reveal') { const bowl = bowls[ballPosition]; if (bowl.isLifted) { ctx.fillStyle = '#e11d48'; ctx.beginPath(); ctx.arc(bowl.x + bowl.width/2, bowl.y + bowl.height - 10, 15, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; ctx.beginPath(); ctx.arc(bowl.x + bowl.width/2 - 5, bowl.y + bowl.height - 15, 5, 0, Math.PI * 2); ctx.fill(); } } }
+
+window.addEventListener('resize', () => { const container = document.querySelector('.game-container'); canvas.width = container.clientWidth; canvas.height = container.clientHeight; if (gameState !== 'menu') { drawGame(); } });
+window.addEventListener('load', initGame);
+</script>
+{% endblock %}

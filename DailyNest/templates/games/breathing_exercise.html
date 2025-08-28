@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ game_name }} - DailyNest{% endblock %}
+
+{% block content %}
+<div class="game-header">
+    <div class="game-title">
+        <h1><i class="fas fa-wind"></i> {{ game_name }}</h1>
+        <p>Follow the guided breathing to relax and refocus</p>
+    </div>
+    <div class="game-actions">
+        <a href="{% url 'games_dashboard' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Games
+        </a>
+    </div>
+</div>
+
+<div class="game-container">
+    <div class="breathing-card">
+        <div id="circle" class="breathing-circle"></div>
+        <div id="instruction" class="breathing-instruction">Breathe In</div>
+        <div class="breathing-controls">
+            <button id="startBreathing" class="btn btn-primary"><i class="fas fa-play"></i> Start</button>
+            <button id="stopBreathing" class="btn btn-secondary"><i class="fas fa-stop"></i> Stop</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.game-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem;padding-bottom:1rem;border-bottom:2px solid #e2e8f0}
+body[data-theme="dark"] .game-header{border-color:#374151}
+.game-title h1{font-family:'Poppins',sans-serif;font-size:2.5rem;font-weight:700;margin:0;background:var(--accent-gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;display:flex;align-items:center;gap:1rem}
+.game-title p{margin:.5rem 0 0 0;color:#64748b;font-size:1.1rem}
+body[data-theme="dark"] .game-title p{color:#94a3b8}
+.game-container{max-width:900px;margin:0 auto;background:var(--surface-light);border-radius:var(--border-radius-lg);padding:2rem;box-shadow:var(--shadow-lg);border:2px solid #e2e8f0}
+body[data-theme="dark"] .game-container{background:var(--surface-dark);border-color:#374151}
+.breathing-card{display:flex;flex-direction:column;align-items:center;gap:1.5rem;padding:2rem;background:linear-gradient(135deg,rgba(6,182,212,.08),rgba(99,102,241,.08));border-radius:var(--border-radius-lg);border:1px solid rgba(6,182,212,.2)}
+.breathing-circle{width:220px;height:220px;border-radius:50%;background:linear-gradient(135deg,var(--soothing-teal),var(--calm-blue));box-shadow:var(--shadow-lg);transform:scale(0.7);transition:transform 4s ease-in-out}
+.breathing-instruction{font-size:1.5rem;font-weight:600;color:var(--calm-blue)}
+.breathing-controls{display:flex;gap:1rem}
+</style>
+
+<script>
+let interval=null;let phase=0; // 0=in,1=hold,2=out,3=hold
+const circle=document.getElementById('circle');
+const instruction=document.getElementById('instruction');
+const phases=[{text:'Breathe In',scale:1.1,duration:4000},{text:'Hold',scale:1.1,duration:2000},{text:'Breathe Out',scale:0.7,duration:4000},{text:'Hold',scale:0.7,duration:2000}];
+function step(){const p=phases[phase];instruction.textContent=p.text;circle.style.transform=`scale(${p.scale})`;clearTimeout(interval);interval=setTimeout(()=>{phase=(phase+1)%phases.length;step();},p.duration);} 
+function start(){if(interval)return;phase=0;step();}
+function stop(){clearTimeout(interval);interval=null;instruction.textContent='Paused';}
+document.getElementById('startBreathing').addEventListener('click',start);
+document.getElementById('stopBreathing').addEventListener('click',stop);
+</script>
+{% endblock %} 
