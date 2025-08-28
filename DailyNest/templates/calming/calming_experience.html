@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calming Experience - DailyNest</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            background: #000;
+            color: white;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .experience-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .background-animation {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        .content {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .emotion-display {
+            font-size: 8rem;
+            margin-bottom: 20px;
+            animation: gentle-pulse 3s ease-in-out infinite;
+        }
+        
+        .emotion-text {
+            font-size: 2rem;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+        
+        .breathing-circle {
+            width: 200px;
+            height: 200px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            margin: 30px auto;
+            position: relative;
+            display: none;
+        }
+        
+        .breathing-circle.active {
+            display: block;
+            animation: breathe 8s ease-in-out infinite;
+        }
+        
+        .breathing-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.2rem;
+            opacity: 0.8;
+        }
+        
+        .timer-display {
+            font-size: 1.5rem;
+            margin: 20px 0;
+            opacity: 0.7;
+        }
+        
+        .controls {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 20;
+        }
+        
+        .control-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50px;
+            padding: 15px 25px;
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .control-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .stop-button {
+            background: rgba(255, 0, 0, 0.3);
+            border-color: rgba(255, 0, 0, 0.5);
+        }
+        
+        .stop-button:hover {
+            background: rgba(255, 0, 0, 0.5);
+        }
+        
+        /* Background animations for different emotions */
+        .happy-bg {
+            background: linear-gradient(45deg, #FFE082, #FFCC02, #FFF176, #FFEB3B);
+            background-size: 400% 400%;
+            animation: happy-gradient 6s ease infinite;
+        }
+        
+        .sad-bg {
+            background: linear-gradient(45deg, #81C784, #4CAF50, #66BB6A, #8BC34A);
+            background-size: 400% 400%;
+            animation: gentle-gradient 8s ease infinite;
+        }
+        
+        .angry-bg {
+            background: linear-gradient(45deg, #64B5F6, #2196F3, #42A5F5, #1E88E5);
+            background-size: 400% 400%;
+            animation: calm-gradient 10s ease infinite;
+        }
+        
+        .sleepy-bg {
+            background: linear-gradient(45deg, #9C27B0, #673AB7, #3F51B5, #2196F3);
+            background-size: 400% 400%;
+            animation: sleepy-gradient 12s ease infinite;
+        }
+        
+        .anxious-bg {
+            background: linear-gradient(45deg, #E1BEE7, #CE93D8, #BA68C8, #AB47BC);
+            background-size: 400% 400%;
+            animation: breathing-gradient 8s ease infinite;
+        }
+        
+        /* Floating elements for different emotions */
+        .floating-element {
+            position: absolute;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+        
+        .balloon {
+            font-size: 2rem;
+            animation: float-up 8s linear infinite;
+        }
+        
+        .star {
+            font-size: 1.5rem;
+            animation: twinkle 3s ease-in-out infinite;
+        }
+        
+        .wave {
+            font-size: 3rem;
+            animation: wave-motion 6s ease-in-out infinite;
+        }
+        
+        .bubble {
+            width: 20px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            animation: bubble-rise 10s linear infinite;
+        }
+        
+        /* Animations */
+        @keyframes gentle-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); border-color: rgba(255, 255, 255, 0.3); }
+            50% { transform: scale(1.2); border-color: rgba(255, 255, 255, 0.8); }
+        }
+        
+        @keyframes happy-gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        @keyframes gentle-gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        @keyframes calm-gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        @keyframes sleepy-gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        @keyframes breathing-gradient {
+            0% { background-position: 0% 50%; }
+            25% { background-position: 100% 0%; }
+            50% { background-position: 100% 100%; }
+            75% { background-position: 0% 100%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        @keyframes float-up {
+            0% { transform: translateY(100vh) rotate(0deg); }
+            100% { transform: translateY(-100px) rotate(360deg); }
+        }
+        
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+        
+        @keyframes wave-motion {
+            0%, 100% { transform: translateX(-20px); }
+            50% { transform: translateX(20px); }
+        }
+        
+        @keyframes bubble-rise {
+            0% { transform: translateY(100vh); opacity: 0; }
+            10% { opacity: 0.6; }
+            90% { opacity: 0.6; }
+            100% { transform: translateY(-100px); opacity: 0; }
+        }
+        
+        /* Reduced motion for accessibility */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="experience-container">
+        <div class="background-animation" id="backgroundAnimation"></div>
+        
+        <div class="content">
+            <div class="emotion-display" id="emotionDisplay">🙂</div>
+            <div class="emotion-text" id="emotionText">Finding your calm...</div>
+            
+            <div class="breathing-circle" id="breathingCircle">
+                <div class="breathing-text" id="breathingText">Breathe In</div>
+            </div>
+            
+            <div class="timer-display" id="timerDisplay"></div>
+        </div>
+        
+        <div class="controls">
+            <button class="control-button" id="audioButton" style="display: none;">🔊 Start Audio</button>
+            <button class="control-button" id="pauseButton">⏸️ Pause</button>
+            <button class="control-button stop-button" id="stopButton">⏹️ Stop</button>
+        </div>
+    </div>
+
+    <audio id="calmingAudio" loop>
+        <source src="" type="audio/wav">
+        <source src="" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+
+    <script>
+        class CalmingExperience {
+            constructor() {
+                this.sessionId = null;
+                this.emotion = null;
+                this.music = null;
+                this.timerDuration = 0;
+                this.enableAnimations = true;
+                this.animationSpeed = 'slow';
+                this.startTime = Date.now();
+                this.isPaused = false;
+                this.timerInterval = null;
+                this.animationElements = [];
+                
+                this.init();
+            }
+            
+            init() {
+                // Parse URL parameters
+                const params = new URLSearchParams(window.location.search);
+                this.sessionId = params.get('session');
+                this.emotion = params.get('emotion');
+                this.music = params.get('music');
+                this.timerDuration = parseInt(params.get('timer')) || 0;
+                this.enableAnimations = params.get('animations') === 'true';
+                this.animationSpeed = params.get('speed') || 'slow';
+                
+                this.setupExperience();
+                this.startSession();
+            }
+            
+            setupExperience() {
+                const emotionDisplay = document.getElementById('emotionDisplay');
+                const emotionText = document.getElementById('emotionText');
+                const backgroundAnimation = document.getElementById('backgroundAnimation');
+                const breathingCircle = document.getElementById('breathingCircle');
+                
+                // Configure based on emotion
+                switch(this.emotion) {
+                    case 'happy':
+                        emotionDisplay.textContent = '🙂';
+                        emotionText.textContent = 'Enjoying happy moments';
+                        backgroundAnimation.className = 'background-animation happy-bg';
+                        this.createFloatingElements('🎈', '🌟', '🦋');
+                        break;
+                        
+                    case 'sad':
+                        emotionDisplay.textContent = '😢';
+                        emotionText.textContent = 'Gentle healing energy';
+                        backgroundAnimation.className = 'background-animation sad-bg';
+                        this.createFloatingElements('🌱', '🍃', '💚');
+                        break;
+                        
+                    case 'angry':
+                        emotionDisplay.textContent = '😡';
+                        emotionText.textContent = 'Finding your peace';
+                        backgroundAnimation.className = 'background-animation angry-bg';
+                        this.createFloatingElements('🌊', '💙', '🕊️');
+                        break;
+                        
+                    case 'sleepy':
+                        emotionDisplay.textContent = '😴';
+                        emotionText.textContent = 'Drifting to peaceful rest';
+                        backgroundAnimation.className = 'background-animation sleepy-bg';
+                        this.createFloatingElements('⭐', '🌙', '✨');
+                        break;
+                        
+                    case 'anxious':
+                        emotionDisplay.textContent = '😰';
+                        emotionText.textContent = 'Breathing through the worry';
+                        backgroundAnimation.className = 'background-animation anxious-bg';
+                        breathingCircle.classList.add('active');
+                        this.startBreathingGuide();
+                        break;
+                }
+                
+                // Setup audio
+                this.setupAudio();
+                
+                // Setup timer
+                if (this.timerDuration > 0) {
+                    this.startTimer();
+                }
+                
+                // Setup controls
+                this.setupControls();
+            }
+            
+            createFloatingElements(emoji1, emoji2, emoji3) {
+                if (!this.enableAnimations) return;
+                
+                const emojis = [emoji1, emoji2, emoji3];
+                const container = document.getElementById('backgroundAnimation');
+                
+                setInterval(() => {
+                    if (this.isPaused) return;
+                    
+                    const element = document.createElement('div');
+                    element.className = 'floating-element balloon';
+                    element.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                    element.style.left = Math.random() * 100 + '%';
+                    element.style.animationDuration = (8 + Math.random() * 4) + 's';
+                    
+                    container.appendChild(element);
+                    this.animationElements.push(element);
+                    
+                    // Remove element after animation
+                    setTimeout(() => {
+                        if (element.parentNode) {
+                            element.parentNode.removeChild(element);
+                        }
+                        const index = this.animationElements.indexOf(element);
+                        if (index > -1) {
+                            this.animationElements.splice(index, 1);
+                        }
+                    }, 12000);
+                }, 2000);
+            }
+            
+            startBreathingGuide() {
+                const breathingText = document.getElementById('breathingText');
+                let isInhaling = true;
+                
+                setInterval(() => {
+                    if (this.isPaused) return;
+                    
+                    if (isInhaling) {
+                        breathingText.textContent = 'Breathe In';
+                    } else {
+                        breathingText.textContent = 'Breathe Out';
+                    }
+                    isInhaling = !isInhaling;
+                }, 4000);
+            }
+            
+            setupAudio() {
+                const audio = document.getElementById('calmingAudio');
+                
+                // Map music types to audio files using emotion-based directories
+                const musicFiles = {
+                    'gentle_piano': '/static/audio/sad/gentle_piano.wav',
+                    'soft_guitar': '/static/audio/happy/upbeat_melody.wav',
+                    'ocean_waves': '/static/audio/angry/ocean_waves.wav',
+                    'rain_sounds': '/static/audio/sleepy/rain_sounds.wav',
+                    'white_noise': '/static/audio/sleepy/rain_sounds.wav',
+                    'lullaby': '/static/audio/sleepy/lullaby.wav',
+                    'heartbeat': '/static/audio/anxious/heartbeat.wav',
+                    'breathing_guide': '/static/audio/anxious/breathing_guide.wav',
+                    'xylophone': '/static/audio/happy/xylophone.wav',
+                    'ukulele': '/static/audio/happy/upbeat_melody.wav'
+                };
+                
+                // Try to load the specific music file
+                if (musicFiles[this.music]) {
+                    audio.src = musicFiles[this.music];
+                    audio.volume = 0.6;
+                    
+                    // Add loaded event listener
+                    audio.addEventListener('loadeddata', () => {
+                        console.log('Audio file loaded successfully');
+                        this.tryPlayAudio();
+                    });
+                    
+                    // Handle audio loading errors
+                    audio.addEventListener('error', () => {
+                        console.log('Audio file not found, trying fallback...');
+                        this.tryFallbackAudio();
+                    });
+                    
+                    // Load the audio file
+                    audio.load();
+                } else {
+                    console.log('No audio configured for music type:', this.music);
+                    this.showAudioButton();
+                }
+            }
+            
+            tryPlayAudio() {
+                const audio = document.getElementById('calmingAudio');
+                
+                // Try to play audio
+                const playPromise = audio.play();
+                
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        console.log('Audio started successfully');
+                        this.hideAudioButton();
+                    }).catch(e => {
+                        console.log('Autoplay prevented - showing audio button:', e.name);
+                        this.showAudioButton();
+                    });
+                }
+            }
+            
+            showAudioButton() {
+                const audioButton = document.getElementById('audioButton');
+                if (audioButton) {
+                    audioButton.style.display = 'block';
+                    audioButton.onclick = () => this.startAudioManually();
+                }
+            }
+            
+            hideAudioButton() {
+                const audioButton = document.getElementById('audioButton');
+                if (audioButton) {
+                    audioButton.style.display = 'none';
+                }
+            }
+            
+            startAudioManually() {
+                const audio = document.getElementById('calmingAudio');
+                audio.play().then(() => {
+                    console.log('Audio started manually');
+                    this.hideAudioButton();
+                }).catch(e => {
+                    console.log('Manual audio start failed:', e);
+                    this.showAudioNotification();
+                });
+            }
+            
+            tryFallbackAudio() {
+                const audio = document.getElementById('calmingAudio');
+                
+                // Try emotion-based fallback files
+                const fallbackFiles = {
+                    'happy': '/static/audio/happy/upbeat_melody.wav',
+                    'sad': '/static/audio/sad/gentle_piano.wav',
+                    'angry': '/static/audio/angry/ocean_waves.wav',
+                    'sleepy': '/static/audio/sleepy/lullaby.wav',
+                    'anxious': '/static/audio/anxious/heartbeat.wav'
+                };
+                
+                if (fallbackFiles[this.emotion]) {
+                    audio.src = fallbackFiles[this.emotion];
+                    audio.play().catch(e => {
+                        console.log('Fallback audio also failed:', e);
+                        this.showAudioNotification();
+                    });
+                }
+            }
+            
+            showAudioNotification() {
+                // Show a helpful notification with instructions
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: rgba(255, 255, 255, 0.9);
+                    color: #333;
+                    padding: 15px 20px;
+                    border-radius: 12px;
+                    font-size: 0.9rem;
+                    z-index: 1000;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                    border-left: 4px solid #2196F3;
+                    max-width: 280px;
+                `;
+                notification.innerHTML = `
+                    <div style="font-weight: bold; margin-bottom: 5px;">🎵 Audio Ready</div>
+                    <div>Click the <strong>🔊 Start Audio</strong> button or <strong>Pause</strong> to begin calming sounds.</div>
+                `;
+                document.body.appendChild(notification);
+                
+                // Remove notification after 8 seconds
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 8000);
+            }
+            
+            startTimer() {
+                const timerDisplay = document.getElementById('timerDisplay');
+                let remainingTime = this.timerDuration * 60; // Convert to seconds
+                
+                this.timerInterval = setInterval(() => {
+                    if (this.isPaused) return;
+                    
+                    remainingTime--;
+                    
+                    const minutes = Math.floor(remainingTime / 60);
+                    const seconds = remainingTime % 60;
+                    
+                    timerDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')} remaining`;
+                    
+                    if (remainingTime <= 0) {
+                        this.endSession(true);
+                    }
+                }, 1000);
+            }
+            
+            setupControls() {
+                const pauseButton = document.getElementById('pauseButton');
+                const stopButton = document.getElementById('stopButton');
+                const audio = document.getElementById('calmingAudio');
+                
+                pauseButton.addEventListener('click', () => {
+                    // If audio hasn't started yet, try to start it
+                    if (audio.paused && audio.currentTime === 0) {
+                        this.startAudioManually();
+                        return;
+                    }
+                    
+                    this.isPaused = !this.isPaused;
+                    
+                    if (this.isPaused) {
+                        pauseButton.textContent = '▶️ Resume';
+                        audio.pause();
+                    } else {
+                        pauseButton.textContent = '⏸️ Pause';
+                        audio.play();
+                    }
+                });
+                
+                stopButton.addEventListener('click', () => {
+                    this.endSession(false);
+                });
+            }
+            
+            startSession() {
+                this.startTime = Date.now();
+            }
+            
+            endSession(completed) {
+                const duration = Math.floor((Date.now() - this.startTime) / 1000);
+                
+                // Clear intervals
+                if (this.timerInterval) {
+                    clearInterval(this.timerInterval);
+                }
+                
+                // Stop audio
+                const audio = document.getElementById('calmingAudio');
+                audio.pause();
+                
+                // Send session data to server
+                fetch('/calming/end-session/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+                    },
+                    body: JSON.stringify({
+                        session_id: this.sessionId,
+                        duration: duration,
+                        completed: completed
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Session ended:', data);
+                })
+                .catch(error => {
+                    console.error('Error ending session:', error);
+                });
+                
+                // Show completion message and redirect
+                setTimeout(() => {
+                    alert(completed ? 'Great job! Your calming session is complete.' : 'Session ended. Take care!');
+                    window.location.href = '/calming/';
+                }, 1000);
+            }
+        }
+        
+        // Initialize the calming experience
+        document.addEventListener('DOMContentLoaded', () => {
+            new CalmingExperience();
+        });
+        
+        // Handle page visibility changes
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                // Pause when tab is not visible
+                const audio = document.getElementById('calmingAudio');
+                audio.pause();
+            }
+        });
+    </script>
+</body>
+</html>

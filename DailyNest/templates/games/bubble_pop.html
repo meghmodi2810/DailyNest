@@ -1,0 +1,652 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ game_name }} - DailyNest{% endblock %}
+
+{% block content %}
+<div class="game-header">
+    <div class="game-title">
+        <h1><i class="fas fa-bubbles"></i> {{ game_name }}</h1>
+        <p>A calming bubble popping game to reduce stress and improve focus</p>
+    </div>
+    <div class="game-actions">
+        <a href="{% url 'games_dashboard' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Games
+        </a>
+    </div>
+</div>
+
+<div class="game-container">
+    <div class="game-ui">
+        <div class="score-display">
+            <i class="fas fa-star"></i>
+            <span id="score">0</span>
+        </div>
+        <div class="timer-display">
+            <i class="fas fa-clock"></i>
+            <span id="timer">00:00</span>
+        </div>
+        <div class="bubbles-count">
+            <i class="fas fa-bubbles"></i>
+            <span id="bubbles-left">0</span>
+        </div>
+    </div>
+
+    <div class="game-area">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <!-- Game Overlay -->
+        <div id="gameOverlay" class="game-overlay hidden">
+            <div class="overlay-content">
+                <h2 id="gameResult">Game Complete!</h2>
+                <div class="final-stats">
+                    <div class="stat">
+                        <span class="label">Final Score:</span>
+                        <span class="value" id="finalScore">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">Time Played:</span>
+                        <span class="value" id="finalTime">00:00</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">Bubbles Popped:</span>
+                        <span class="value" id="finalBubbles">0</span>
+                    </div>
+                </div>
+                <div class="overlay-actions">
+                    <button id="playAgainBtn" class="btn btn-primary">
+                        <i class="fas fa-redo"></i> Play Again
+                    </button>
+                    <a href="{% url 'games_dashboard' %}" class="btn btn-secondary">
+                        <i class="fas fa-trophy"></i> View Progress
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div id="instructions" class="instructions">
+            <h3>How to Play</h3>
+            <ul>
+                <li>Click on bubbles to pop them</li>
+                <li>Different colored bubbles give different points</li>
+                <li>Try to pop as many as you can!</li>
+                <li>Take deep breaths while playing</li>
+            </ul>
+            <button id="startGameBtn" class="btn btn-primary btn-lg">
+                <i class="fas fa-play"></i> Start Game
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .game-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    body[data-theme="dark"] .game-header {
+        border-color: #374151;
+    }
+
+    .game-title h1 {
+        font-family: 'Poppins', sans-serif;
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin: 0;
+        background: var(--accent-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .game-title p {
+        margin: 0.5rem 0 0 0;
+        color: #64748b;
+        font-size: 1.1rem;
+    }
+
+    body[data-theme="dark"] .game-title p {
+        color: #94a3b8;
+    }
+
+    .game-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        background: var(--surface-light);
+        border-radius: var(--border-radius-lg);
+        padding: 2rem;
+        box-shadow: var(--shadow-lg);
+        border: 2px solid #e2e8f0;
+    }
+
+    body[data-theme="dark"] .game-container {
+        background: var(--surface-dark);
+        border-color: #374151;
+    }
+
+    .game-ui {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding: 1rem 2rem;
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+        border-radius: var(--border-radius-lg);
+        border: 1px solid rgba(99, 102, 241, 0.2);
+    }
+
+    .score-display, .timer-display, .bubbles-count {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text-light);
+        padding: 0.75rem 1.5rem;
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: var(--border-radius);
+        border: 1px solid rgba(99, 102, 241, 0.2);
+    }
+
+    body[data-theme="dark"] .score-display,
+    body[data-theme="dark"] .timer-display,
+    body[data-theme="dark"] .bubbles-count {
+        color: var(--text-dark);
+        background: rgba(30, 41, 59, 0.8);
+        border-color: rgba(99, 102, 241, 0.3);
+    }
+
+    .game-area {
+        position: relative;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 600px;
+    }
+
+    #gameCanvas {
+        border: 3px solid var(--calm-blue);
+        border-radius: var(--border-radius-lg);
+        background: linear-gradient(135deg, #f7f3e8, #e8f7f3);
+        cursor: pointer;
+        box-shadow: var(--shadow-lg);
+    }
+
+    .game-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border-radius: var(--border-radius-lg);
+        transition: opacity 0.5s ease-in-out;
+    }
+
+    .game-overlay.hidden {
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .overlay-content {
+        background: var(--surface-light);
+        padding: 3rem;
+        border-radius: var(--border-radius-lg);
+        text-align: center;
+        max-width: 500px;
+        box-shadow: var(--shadow-xl);
+        border: 2px solid var(--calm-blue);
+    }
+
+    body[data-theme="dark"] .overlay-content {
+        background: var(--surface-dark);
+        border-color: var(--calm-blue);
+    }
+
+    .overlay-content h2 {
+        color: var(--calm-blue);
+        margin-bottom: 2rem;
+        font-size: 2rem;
+    }
+
+    .final-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1.5rem;
+        margin: 2rem 0;
+    }
+
+    .stat {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .stat .label {
+        font-size: 0.9rem;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    body[data-theme="dark"] .stat .label {
+        color: #94a3b8;
+    }
+
+    .stat .value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--calm-blue);
+    }
+
+    .overlay-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin-top: 2rem;
+    }
+
+    .instructions {
+        text-align: center;
+        padding: 2rem;
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: var(--border-radius-lg);
+        border: 2px solid var(--calm-blue);
+        max-width: 500px;
+    }
+
+    body[data-theme="dark"] .instructions {
+        background: rgba(30, 41, 59, 0.9);
+        border-color: var(--calm-blue);
+    }
+
+    .instructions h3 {
+        color: var(--calm-blue);
+        margin-bottom: 1.5rem;
+        font-size: 1.5rem;
+    }
+
+    .instructions ul {
+        text-align: left;
+        margin: 1.5rem 0;
+        padding-left: 1.5rem;
+        color: #64748b;
+        line-height: 1.6;
+    }
+
+    body[data-theme="dark"] .instructions ul {
+        color: #94a3b8;
+    }
+
+    .instructions li {
+        margin-bottom: 0.5rem;
+    }
+
+    .btn-lg {
+        padding: 1rem 2rem;
+        font-size: 1.1rem;
+        border-radius: var(--border-radius-lg);
+    }
+
+    @media (max-width: 768px) {
+        .game-header {
+            flex-direction: column;
+            gap: 1rem;
+            text-align: center;
+        }
+
+        .game-title h1 {
+            font-size: 2rem;
+        }
+
+        .game-container {
+            padding: 1rem;
+        }
+
+        .game-ui {
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        #gameCanvas {
+            width: 100%;
+            height: auto;
+            max-width: 400px;
+        }
+
+        .overlay-actions {
+            flex-direction: column;
+        }
+
+        .final-stats {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<script>
+    // Game variables
+    let canvas, ctx;
+    let bubbles = [];
+    let score = 0;
+    let gameTime = 0;
+    let gameRunning = false;
+    let gameInterval;
+    let timeInterval;
+    let sessionStartTime;
+    let bubblesPopped = 0;
+    let totalBubbles = 0;
+    
+    // Game configuration
+    const GAME_DURATION = 60000; // 60 seconds
+    const BUBBLE_SPAWN_RATE = 1000; // 1 second
+    const MAX_BUBBLES = 20;
+    
+    // Colors for different bubble types
+    const BUBBLE_COLORS = [
+        { color: '#a3c4f3', points: 10, probability: 0.4 },   // Blue - Common
+        { color: '#e0bcf7', points: 20, probability: 0.3 },   // Pink - Uncommon
+        { color: '#b9fbc0', points: 30, probability: 0.2 },   // Green - Rare
+        { color: '#ffeb99', points: 50, probability: 0.1 }    // Yellow - Very Rare
+    ];
+
+    class Bubble {
+        constructor() {
+            this.radius = Math.random() * 30 + 20;
+            this.x = Math.random() * (canvas.width - this.radius * 2) + this.radius;
+            this.y = canvas.height + this.radius;
+            this.speed = Math.random() * 2 + 1;
+            this.color = this.getRandomColor();
+            this.points = this.color.points;
+            this.color = this.color.color;
+            this.opacity = 0.8;
+            this.popped = false;
+        }
+
+        getRandomColor() {
+            const rand = Math.random();
+            let cumulative = 0;
+            for (let bubbleType of BUBBLE_COLORS) {
+                cumulative += bubbleType.probability;
+                if (rand <= cumulative) {
+                    return bubbleType;
+                }
+            }
+            return BUBBLE_COLORS[0];
+        }
+
+        update() {
+            this.y -= this.speed;
+            if (this.y < -this.radius) {
+                this.popped = true;
+            }
+        }
+
+        draw() {
+            ctx.save();
+            ctx.globalAlpha = this.opacity;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        isClicked(mouseX, mouseY) {
+            const distance = Math.sqrt((mouseX - this.x) ** 2 + (mouseY - this.y) ** 2);
+            return distance <= this.radius;
+        }
+    }
+
+    function initGame() {
+        canvas = document.getElementById('gameCanvas');
+        ctx = canvas.getContext('2d');
+        
+        // Set canvas size
+        canvas.width = 800;
+        canvas.height = 600;
+        
+        // Add click event listener
+        canvas.addEventListener('click', handleCanvasClick);
+        
+        // Initialize game elements
+        resetGame();
+    }
+
+    function resetGame() {
+        score = 0;
+        gameTime = 0;
+        bubbles = [];
+        bubblesPopped = 0;
+        totalBubbles = 0;
+        gameRunning = false;
+        
+        updateUI();
+        hideGameOverlay();
+        showInstructions();
+    }
+
+    function startGame() {
+        gameRunning = true;
+        sessionStartTime = Date.now();
+        hideInstructions();
+        
+        // Start game loop
+        gameInterval = setInterval(gameLoop, 16); // 60 FPS
+        timeInterval = setInterval(updateTimer, 1000);
+        
+        // Start spawning bubbles
+        setTimeout(spawnBubble, 1000);
+    }
+
+    function gameLoop() {
+        if (!gameRunning) return;
+        
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Update and draw bubbles
+        bubbles = bubbles.filter(bubble => !bubble.popped);
+        bubbles.forEach(bubble => {
+            bubble.update();
+            bubble.draw();
+        });
+        
+        // Spawn new bubbles
+        if (bubbles.length < MAX_BUBBLES && Math.random() < 0.02) {
+            spawnBubble();
+        }
+        
+        // Check game end
+        if (Date.now() - sessionStartTime >= GAME_DURATION) {
+            endGame();
+        }
+    }
+
+    function spawnBubble() {
+        if (bubbles.length < MAX_BUBBLES) {
+            bubbles.push(new Bubble());
+            totalBubbles++;
+        }
+    }
+
+    function handleCanvasClick(event) {
+        if (!gameRunning) return;
+        
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = event.clientX - rect.left;
+        const mouseY = event.clientY - rect.top;
+        
+        // Check if any bubble was clicked
+        for (let i = bubbles.length - 1; i >= 0; i--) {
+            if (bubbles[i].isClicked(mouseX, mouseY)) {
+                popBubble(i);
+                break;
+            }
+        }
+    }
+
+    function popBubble(index) {
+        const bubble = bubbles[index];
+        bubble.popped = true;
+        score += bubble.points;
+        bubblesPopped++;
+        
+        updateUI();
+        
+        // Add pop effect
+        createPopEffect(bubble.x, bubble.y);
+    }
+
+    function createPopEffect(x, y) {
+        // Simple pop effect with particles
+        for (let i = 0; i < 8; i++) {
+            const angle = (Math.PI * 2 * i) / 8;
+            const velocity = 3;
+            const particle = {
+                x: x,
+                y: y,
+                vx: Math.cos(angle) * velocity,
+                vy: Math.sin(angle) * velocity,
+                life: 30
+            };
+            
+            // Draw particle
+            ctx.save();
+            ctx.globalAlpha = 0.8;
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(particle.x, particle.y, 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+
+    function updateTimer() {
+        if (!gameRunning) return;
+        
+        gameTime++;
+        const minutes = Math.floor(gameTime / 60);
+        const seconds = gameTime % 60;
+        document.getElementById('timer').textContent = 
+            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    function updateUI() {
+        document.getElementById('score').textContent = score;
+        document.getElementById('bubbles-left').textContent = bubbles.length;
+    }
+
+    function endGame() {
+        gameRunning = false;
+        clearInterval(gameInterval);
+        clearInterval(timeInterval);
+        
+        // Calculate final stats
+        const finalTime = Math.floor((Date.now() - sessionStartTime) / 1000);
+        
+        // Update overlay
+        document.getElementById('finalScore').textContent = score;
+        document.getElementById('finalTime').textContent = formatTime(finalTime);
+        document.getElementById('finalBubbles').textContent = bubblesPopped;
+        
+        // Show game over overlay
+        showGameOverlay();
+        
+        // Save game results
+        saveGameResults(score, finalTime);
+    }
+
+    function formatTime(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
+
+    function showGameOverlay() {
+        document.getElementById('gameOverlay').classList.remove('hidden');
+    }
+
+    function hideGameOverlay() {
+        document.getElementById('gameOverlay').classList.add('hidden');
+    }
+
+    function showInstructions() {
+        document.getElementById('instructions').style.display = 'block';
+    }
+
+    function hideInstructions() {
+        document.getElementById('instructions').style.display = 'none';
+    }
+
+    async function saveGameResults(finalScore, finalTime) {
+        try {
+            const response = await fetch('{% url "save_game_result" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    session_id: {{ session_id }},
+                    score: finalScore,
+                    duration: finalTime,
+                    game_type: '{{ game_type }}',
+                    session_data: {
+                        bubbles_popped: bubblesPopped,
+                        total_bubbles: totalBubbles
+                    }
+                })
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                console.log('Game results saved successfully');
+            } else {
+                console.error('Failed to save game results:', result.error);
+            }
+        } catch (error) {
+            console.error('Error saving game results:', error);
+        }
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Event listeners
+    document.getElementById('startGameBtn').addEventListener('click', startGame);
+    document.getElementById('playAgainBtn').addEventListener('click', () => {
+        resetGame();
+        startGame();
+    });
+
+    // Initialize game when page loads
+    document.addEventListener('DOMContentLoaded', initGame);
+</script>
+{% endblock %} 

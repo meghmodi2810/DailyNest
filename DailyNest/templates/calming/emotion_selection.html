@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calming Module - DailyNest</title>
+    <link rel="stylesheet" href="{% load static %}{% static 'css/calming.css' %}">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .calming-container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .header {
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            color: #4a4a4a;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+        }
+        
+        .suggestion-box {
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 30px;
+            border: 2px solid #e1bee7;
+        }
+        
+        .emotion-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        
+        .emotion-button {
+            background: white;
+            border: 3px solid #e0e0e0;
+            border-radius: 20px;
+            padding: 30px 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .emotion-button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        
+        .emotion-button.selected {
+            border-color: #7b1fa2;
+            background: #f3e5f5;
+            transform: translateY(-5px);
+        }
+        
+        .emotion-emoji {
+            font-size: 4rem;
+            margin-bottom: 10px;
+            line-height: 1;
+        }
+        
+        .emotion-label {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #4a4a4a;
+        }
+        
+        .emotion-description {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .timer-section {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .timer-options {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+        
+        .timer-button {
+            background: #f5f5f5;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .timer-button:hover, .timer-button.selected {
+            background: #e1bee7;
+            border-color: #7b1fa2;
+        }
+        
+        .start-button {
+            background: linear-gradient(135deg, #7b1fa2 0%, #9c27b0 100%);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            padding: 15px 40px;
+            font-size: 1.3rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(123, 31, 162, 0.3);
+        }
+        
+        .start-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(123, 31, 162, 0.4);
+        }
+        
+        .start-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .recent-sessions {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 30px;
+            text-align: left;
+        }
+        
+        .session-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .session-emoji {
+            font-size: 1.5rem;
+            margin-right: 15px;
+        }
+        
+        .back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 10px 15px;
+            text-decoration: none;
+            color: #666;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .back-button:hover {
+            background: #f5f5f5;
+            border-color: #7b1fa2;
+            color: #7b1fa2;
+        }
+    </style>
+</head>
+<body>
+    <a href="{% url 'dashboard' %}" class="back-button">← Back to Dashboard</a>
+    
+    <div class="calming-container">
+        <div class="header">
+            <h1>🌸 Calming Space 🌸</h1>
+            <p>How are you feeling right now? Choose what describes you best.</p>
+            
+            {% if suggested_emotion %}
+            <div class="suggestion-box">
+                <p><strong>💡 Based on your recent activity, we suggest starting with: 
+                {% if suggested_emotion == 'happy' %}🙂 Happy
+                {% elif suggested_emotion == 'sad' %}😢 Sad  
+                {% elif suggested_emotion == 'angry' %}😡 Angry
+                {% elif suggested_emotion == 'sleepy' %}😴 Sleepy
+                {% elif suggested_emotion == 'anxious' %}😰 Anxious
+                {% endif %}</strong></p>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="emotion-grid">
+            <div class="emotion-button" data-emotion="happy">
+                <div class="emotion-emoji">🙂</div>
+                <div class="emotion-label">Happy</div>
+                <div class="emotion-description">Feeling good and cheerful</div>
+            </div>
+            
+            <div class="emotion-button" data-emotion="sad">
+                <div class="emotion-emoji">😢</div>
+                <div class="emotion-label">Sad</div>
+                <div class="emotion-description">Feeling down or upset</div>
+            </div>
+            
+            <div class="emotion-button" data-emotion="angry">
+                <div class="emotion-emoji">😡</div>
+                <div class="emotion-label">Angry</div>
+                <div class="emotion-description">Feeling frustrated or mad</div>
+            </div>
+            
+            <div class="emotion-button" data-emotion="sleepy">
+                <div class="emotion-emoji">😴</div>
+                <div class="emotion-label">Sleepy</div>
+                <div class="emotion-description">Feeling tired or want to rest</div>
+            </div>
+            
+            <div class="emotion-button" data-emotion="anxious">
+                <div class="emotion-emoji">😰</div>
+                <div class="emotion-label">Anxious</div>
+                <div class="emotion-description">Feeling worried or nervous</div>
+            </div>
+        </div>
+        
+        <div class="timer-section">
+            <h3>⏰ How long would you like to calm down?</h3>
+            <div class="timer-options">
+                <div class="timer-button" data-timer="5">5 minutes</div>
+                <div class="timer-button selected" data-timer="15">15 minutes</div>
+                <div class="timer-button" data-timer="30">30 minutes</div>
+                <div class="timer-button" data-timer="0">No timer</div>
+            </div>
+        </div>
+        
+        <button class="start-button" id="startSession" disabled>
+            🎵 Start My Calming Session
+        </button>
+        
+        {% if recent_sessions %}
+        <div class="recent-sessions">
+            <h3>📊 Your Recent Sessions</h3>
+            {% for session in recent_sessions %}
+            <div class="session-item">
+                <div class="session-emoji">
+                    {% if session.emotion_selected == 'happy' %}🙂
+                    {% elif session.emotion_selected == 'sad' %}😢
+                    {% elif session.emotion_selected == 'angry' %}😡
+                    {% elif session.emotion_selected == 'sleepy' %}😴
+                    {% elif session.emotion_selected == 'anxious' %}😰
+                    {% endif %}
+                </div>
+                <div>
+                    <strong>{{ session.get_emotion_selected_display }}</strong> - 
+                    {{ session.session_duration|floatformat:0 }} seconds
+                    <small>({{ session.created_at|date:"M d, H:i" }})</small>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        let selectedEmotion = null;
+        let selectedTimer = 15; // Default 15 minutes
+        
+        // Handle emotion selection
+        document.querySelectorAll('.emotion-button').forEach(button => {
+            button.addEventListener('click', function() {
+                // Remove previous selection
+                document.querySelectorAll('.emotion-button').forEach(b => b.classList.remove('selected'));
+                
+                // Add selection to clicked button
+                this.classList.add('selected');
+                selectedEmotion = this.dataset.emotion;
+                
+                // Enable start button
+                updateStartButton();
+            });
+        });
+        
+        // Handle timer selection
+        document.querySelectorAll('.timer-button').forEach(button => {
+            button.addEventListener('click', function() {
+                // Remove previous selection
+                document.querySelectorAll('.timer-button').forEach(b => b.classList.remove('selected'));
+                
+                // Add selection to clicked button
+                this.classList.add('selected');
+                selectedTimer = parseInt(this.dataset.timer);
+            });
+        });
+        
+        // Auto-select suggested emotion if available
+        {% if suggested_emotion %}
+        const suggestedButton = document.querySelector('[data-emotion="{{ suggested_emotion }}"]');
+        if (suggestedButton) {
+            suggestedButton.click();
+        }
+        {% endif %}
+        
+        function updateStartButton() {
+            const startButton = document.getElementById('startSession');
+            if (selectedEmotion) {
+                startButton.disabled = false;
+                startButton.textContent = `🎵 Start ${selectedEmotion.charAt(0).toUpperCase() + selectedEmotion.slice(1)} Session`;
+            } else {
+                startButton.disabled = true;
+                startButton.textContent = '🎵 Start My Calming Session';
+            }
+        }
+        
+        // Handle start session
+        document.getElementById('startSession').addEventListener('click', function() {
+            if (!selectedEmotion) return;
+            
+            this.disabled = true;
+            this.textContent = '🎵 Starting...';
+            
+            fetch('{% url "start_calming_session" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    emotion: selectedEmotion,
+                    timer_duration: selectedTimer
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Redirect to calming experience using Django URL
+                    window.location.href = `/calming/experience/?session=${data.session_id}&emotion=${data.emotion}&music=${data.music}&timer=${data.timer_duration}&animations=${data.enable_animations}&speed=${data.animation_speed}`;
+                } else {
+                    alert('Error starting session: ' + data.error);
+                    this.disabled = false;
+                    updateStartButton();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error starting session. Please try again.');
+                this.disabled = false;
+                updateStartButton();
+            });
+        });
+    </script>
+</body>
+</html>

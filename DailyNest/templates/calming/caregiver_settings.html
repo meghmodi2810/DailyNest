@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calming Settings - DailyNest</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .settings-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 300;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .user-selector {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .user-selector h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+        }
+        
+        .user-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .user-card {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .user-card:hover, .user-card.selected {
+            border-color: #667eea;
+            background: #f8f9ff;
+            transform: translateY(-2px);
+        }
+        
+        .user-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #667eea;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin: 0 auto 10px auto;
+        }
+        
+        .preferences-form {
+            display: none;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+        }
+        
+        .preferences-form.active {
+            display: block;
+        }
+        
+        .form-section {
+            margin-bottom: 30px;
+        }
+        
+        .form-section h4 {
+            color: #333;
+            margin: 0 0 15px 0;
+            font-size: 1.3rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 5px;
+        }
+        
+        .emotion-settings {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .emotion-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            border: 2px solid #e9ecef;
+        }
+        
+        .emotion-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .emotion-emoji {
+            font-size: 2rem;
+            margin-right: 10px;
+        }
+        
+        .emotion-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .form-group select, .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 5px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group select:focus, .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            transform: scale(1.2);
+        }
+        
+        .save-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 20px;
+        }
+        
+        .save-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 10px 15px;
+            text-decoration: none;
+            color: #666;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .back-button:hover {
+            background: #f5f5f5;
+            border-color: #667eea;
+            color: #667eea;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <a href="{% url 'caregiver_dashboard' %}" class="back-button">← Back to Dashboard</a>
+    
+    <div class="settings-container">
+        <div class="header">
+            <h1>🎵 Calming Module Settings</h1>
+            <p>Customize calming preferences for individuals under your care</p>
+        </div>
+        
+        <div class="content">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+            
+            <div class="user-selector">
+                <h3>👥 Select Individual to Configure</h3>
+                <div class="user-grid">
+                    {% for user in autistic_users %}
+                    <div class="user-card" data-user-id="{{ user.id }}" onclick="selectUser({{ user.id }})">
+                        <div class="user-avatar">
+                            {{ user.name|first|upper }}
+                        </div>
+                        <div class="user-name">{{ user.name }}</div>
+                        <div class="user-role">{{ user.get_role_display }}</div>
+                    </div>
+                    {% empty %}
+                    <p>No individuals under your care. Please establish care relationships first.</p>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            {% if selected_user and preferences %}
+            <form method="post" class="preferences-form active">
+                {% csrf_token %}
+                <input type="hidden" name="user_id" value="{{ selected_user.id }}">
+                
+                <div class="form-section">
+                    <h4>🎵 Music Preferences for {{ selected_user.name }}</h4>
+                    <div class="emotion-settings">
+                        <div class="emotion-card">
+                            <div class="emotion-header">
+                                <div class="emotion-emoji">🙂</div>
+                                <div class="emotion-name">Happy</div>
+                            </div>
+                            <div class="form-group">
+                                <label for="happy_music">Music for Happy Mood:</label>
+                                <select name="happy_music" id="happy_music">
+                                    {% for value, label in music_choices %}
+                                    <option value="{{ value }}" {% if preferences.happy_music == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="emotion-card">
+                            <div class="emotion-header">
+                                <div class="emotion-emoji">😢</div>
+                                <div class="emotion-name">Sad</div>
+                            </div>
+                            <div class="form-group">
+                                <label for="sad_music">Music for Sad Mood:</label>
+                                <select name="sad_music" id="sad_music">
+                                    {% for value, label in music_choices %}
+                                    <option value="{{ value }}" {% if preferences.sad_music == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="emotion-card">
+                            <div class="emotion-header">
+                                <div class="emotion-emoji">😡</div>
+                                <div class="emotion-name">Angry</div>
+                            </div>
+                            <div class="form-group">
+                                <label for="angry_music">Music for Angry Mood:</label>
+                                <select name="angry_music" id="angry_music">
+                                    {% for value, label in music_choices %}
+                                    <option value="{{ value }}" {% if preferences.angry_music == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="emotion-card">
+                            <div class="emotion-header">
+                                <div class="emotion-emoji">😴</div>
+                                <div class="emotion-name">Sleepy</div>
+                            </div>
+                            <div class="form-group">
+                                <label for="sleepy_music">Music for Sleepy Mood:</label>
+                                <select name="sleepy_music" id="sleepy_music">
+                                    {% for value, label in music_choices %}
+                                    <option value="{{ value }}" {% if preferences.sleepy_music == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="emotion-card">
+                            <div class="emotion-header">
+                                <div class="emotion-emoji">😰</div>
+                                <div class="emotion-name">Anxious</div>
+                            </div>
+                            <div class="form-group">
+                                <label for="anxious_music">Music for Anxious Mood:</label>
+                                <select name="anxious_music" id="anxious_music">
+                                    {% for value, label in music_choices %}
+                                    <option value="{{ value }}" {% if preferences.anxious_music == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h4>🎨 Visual & Animation Settings</h4>
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" name="enable_animations" id="enable_animations" {% if preferences.enable_animations %}checked{% endif %}>
+                            <label for="enable_animations">Enable Visual Animations</label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="animation_speed">Animation Speed:</label>
+                        <select name="animation_speed" id="animation_speed">
+                            <option value="slow" {% if preferences.animation_speed == 'slow' %}selected{% endif %}>Slow (Recommended)</option>
+                            <option value="medium" {% if preferences.animation_speed == 'medium' %}selected{% endif %}>Medium</option>
+                            <option value="fast" {% if preferences.animation_speed == 'fast' %}selected{% endif %}>Fast</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h4>⏰ Timer Settings</h4>
+                    <div class="form-group">
+                        <label for="default_timer_duration">Default Timer Duration (minutes):</label>
+                        <input type="number" name="default_timer_duration" id="default_timer_duration" 
+                               value="{{ preferences.default_timer_duration }}" min="5" max="60">
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" name="auto_stop_enabled" id="auto_stop_enabled" {% if preferences.auto_stop_enabled %}checked{% endif %}>
+                            <label for="auto_stop_enabled">Auto-stop music when timer ends</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="save-button">💾 Save Preferences</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        function selectUser(userId) {
+            // Remove previous selections
+            document.querySelectorAll('.user-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            
+            // Add selection to clicked card
+            document.querySelector(`[data-user-id="${userId}"]`).classList.add('selected');
+            
+            // Redirect to load user preferences
+            window.location.href = `?user_id=${userId}`;
+        }
+        
+        // Auto-select user if already selected
+        const urlParams = new URLSearchParams(window.location.search);
+        const selectedUserId = urlParams.get('user_id');
+        if (selectedUserId) {
+            const userCard = document.querySelector(`[data-user-id="${selectedUserId}"]`);
+            if (userCard) {
+                userCard.classList.add('selected');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -83,10 +83,12 @@ class ChatMessage(models.Model):
         ('bot', 'Bot'),
     ]
     
+    user = models.ForeignKey('CustomUser', on_delete=models.CASCADE, null=True, blank=True)
     sender = models.CharField(max_length=10, choices=SENDER_CHOICES)
     message = models.TextField()
     timestamp = models.DateTimeField(default=timezone.now)
     emotion_context = models.ForeignKey(EmotionRecord, on_delete=models.SET_NULL, null=True, blank=True)
+    is_bot = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.sender}: {self.message[:50]}..."
@@ -327,3 +329,82 @@ class ScheduledNote(models.Model):
     
     def __str__(self):
         return f"Scheduled: {self.title} for {self.autistic_person.name}"
+
+class GameProgress(models.Model):
+    """Model to track user progress in games"""
+    GAME_CHOICES = [
+        ('bubble_pop', 'Bubble Pop'),
+        ('memory_match', 'Memory Match'),
+        ('puzzle_solve', 'Puzzle Solve'),
+        ('calm_colors', 'Calm Colors'),
+        ('breathing_exercise', 'Breathing Exercise'),
+    ]
+    
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='game_progress')
+    game_type = models.CharField(max_length=50, choices=GAME_CHOICES)
+    score = models.IntegerField(default=0)
+    time_spent = models.IntegerField(default=0, help_text="Time spent in seconds")
+    completed = models.BooleanField(default=False)
+    last_played = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ['user', 'game_type']
+        ordering = ['-last_played']
+        indexes = [
+            models.Index(fields=['user', 'game_type']),
+            models.Index(fields=['last_played']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.name} - {self.get_game_type_display()} (Score: {self.score})"
+    
+    @property
+    def formatted_time(self):
+        """Format time spent in MM:SS format"""
+        minutes = self.time_spent // 60
+        seconds = self.time_spent % 60
+        return f"{minutes:02d}:{seconds:02d}"
+
+class GameSession(models.Model):
+    """Model to track individual game sessions"""
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='game_sessions')
+    game_type = models.CharField(max_length=50, choices=GameProgress.GAME_CHOICES)
+    session_score = models.IntegerField(default=0)
+    session_duration = models.IntegerField(default=0, help_text="Session duration in seconds")
+    session_data = models.JSONField(default=dict, blank=True, help_text="Additional session data")
+    started_at = models.DateTimeField(auto_now_add=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        ordering = ['-started_at']
+        indexes = [
+            models.Index(fields=['user', 'game_type']),
+            models.Index(fields=['started_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.name} - {self.get_game_type_display()} Session ({self.started_at.strftime('%Y-%m-%d %H:%M')})"
+    
+    def end_session(self, final_score, final_duration, session_data=None):
+        """End the game session and update progress"""
+        self.session_score = final_score
+        self.session_duration = final_duration
+        if session_data:
+            self.session_data = session_data
+        self.ended_at = timezone.now()
+        self.save()
+        
+        # Update or create game progress
+        progress, created = GameProgress.objects.get_or_create(
+            user=self.user,
+            game_type=self.game_type,
+            defaults={'score': final_score, 'time_spent': final_duration}
+        )
+        
+        if not created:
+            # Update existing progress
+            progress.score = max(progress.score, final_score)
+            progress.time_spent += final_duration
+            progress.last_played = timezone.now()
+            progress.save()

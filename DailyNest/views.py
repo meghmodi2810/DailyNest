@@ -116,12 +116,35 @@ def redirect_to_dashboard(user):
 # Dashboard Views
 @login_required
 def admin_dashboard(request):
-    """Admin dashboard with system overview"""
+    """Admin dashboard with comprehensive system overview"""
+    if request.user.role != 'admin':
+        messages.error(request, 'Access denied. Admin role required.')
+        return redirect('dashboard')
+    
+    from .models import CareRelationship
+    
+    all_users = CustomUser.objects.all().order_by('-created_at')
+    admins = all_users.filter(role='admin')
+    caregivers = all_users.filter(role='caregiver')
+    autistic_persons = all_users.filter(role='autistic_person')
+    
+    care_relationships = CareRelationship.objects.all().order_by('-created_at')
+    
+    total_emotions = EmotionRecord.objects.count()
+    total_chats = ChatMessage.objects.count()
+    
     context = {
-        'user_count': CustomUser.objects.count(),
-        'emotion_records_count': EmotionRecord.objects.count(),
-        'chat_messages_count': ChatMessage.objects.count(),
-        'recent_users': CustomUser.objects.order_by('-created_at')[:5],
+        'all_users': all_users,
+        'admins': admins,
+        'caregivers': caregivers,
+        'autistic_persons': autistic_persons,
+        'care_relationships': care_relationships,
+        'total_emotions': total_emotions,
+        'total_chats': total_chats,
+        'user_count': all_users.count(),
+        'emotion_records_count': total_emotions,
+        'chat_messages_count': total_chats,
+        'recent_users': all_users[:5],
     }
     return render(request, 'dashboards/admin_dashboard.html', context)
 
@@ -201,10 +224,12 @@ def emotion(request):
     return render(request, 'emotion.html', context)
 
 def chat(request):
-    """Chat page view"""
+    """Chat page view - user isolated"""
     # Get or create preferences for the current user (or default user if anonymous)
     if request.user.is_authenticated:
         preferences, created = UserPreference.objects.get_or_create(user=request.user)
+        # Get recent chat messages for current user only
+        recent_messages = ChatMessage.objects.filter(user=request.user).order_by('-timestamp')[:20]
     else:
         # For anonymous users, try to get the first superuser or create default preferences
         default_user = CustomUser.objects.filter(is_superuser=True).first()
@@ -213,9 +238,9 @@ def chat(request):
         else:
             # Create a minimal context without preferences
             preferences = None
+        # Get recent chat messages for anonymous users
+        recent_messages = ChatMessage.objects.filter(user__isnull=True).order_by('-timestamp')[:20]
     
-    # Get recent chat messages
-    recent_messages = ChatMessage.objects.order_by('-timestamp')[:20]
     context = {
         'preferences': preferences,
         'recent_messages': reversed(recent_messages),
@@ -267,8 +292,9 @@ def detect_emotion(request):
                     voice_emotion, voice_confidence = "neutral", 0.0
                     speech_text = None
 
-            # Save emotion record with confidence scores
+            # Save emotion record with confidence scores and user association
             record = EmotionRecord.objects.create(
+                user=request.user if request.user.is_authenticated else None,
                 face_emotion=face_emotion if face_emotion and not face_emotion.startswith('Error') else None,
                 voice_emotion=voice_emotion if voice_emotion and not voice_emotion.startswith('Error') else None,
                 face_confidence=face_confidence,
@@ -307,8 +333,11 @@ def chat_message(request):
             if not user_message:
                 return JsonResponse({'error': 'Empty message'}, status=400)
             
-            # Get the latest emotion record for context
-            latest_emotion = EmotionRecord.objects.order_by('-timestamp').first()
+            # Get the latest emotion record for context (user-specific)
+            if request.user.is_authenticated:
+                latest_emotion = EmotionRecord.objects.filter(user=request.user).order_by('-timestamp').first()
+            else:
+                latest_emotion = EmotionRecord.objects.filter(user__isnull=True).order_by('-timestamp').first()
             
             # Extract emotions
             face_emotion = latest_emotion.face_emotion if latest_emotion else 'neutral'
@@ -320,11 +349,13 @@ def chat_message(request):
             if voice_emotion and ('Error' in voice_emotion or 'No voice' in voice_emotion):
                 voice_emotion = 'neutral'
             
-            # Save user message
+            # Save user message with user association
             user_chat_message = ChatMessage.objects.create(
+                user=request.user if request.user.is_authenticated else None,
                 sender='user',
                 message=user_message,
-                emotion_context=latest_emotion
+                emotion_context=latest_emotion,
+                is_bot=False
             )
             
             # Get chatbot response using enhanced Ollama integration
@@ -342,11 +373,13 @@ def chat_message(request):
                 print(f"Chatbot error: {e}")
                 bot_response = "I'm having trouble connecting to the local AI. Please make sure Ollama is running."
             
-            # Save bot response
+            # Save bot response with user association
             bot_chat_message = ChatMessage.objects.create(
+                user=request.user if request.user.is_authenticated else None,
                 sender='bot',
                 message=bot_response,
-                emotion_context=latest_emotion
+                emotion_context=latest_emotion,
+                is_bot=True
             )
             
             return JsonResponse({
@@ -422,13 +455,15 @@ def emotion_history(request):
     """Get recent emotion detection history"""
     return get_emotion_history(request)
 
-@csrf_exempt
 def get_emotion_history(request):
     """Get recent emotion detection history"""
     if request.method == 'GET':
         try:
-            # Get last 10 emotion records
-            records = EmotionRecord.objects.order_by('-timestamp')[:10]
+            # Get last 10 emotion records for current user
+            if request.user.is_authenticated:
+                records = EmotionRecord.objects.filter(user=request.user).order_by('-timestamp')[:10]
+            else:
+                records = EmotionRecord.objects.filter(user__isnull=True).order_by('-timestamp')[:10]
             
             history = []
             for record in records:
@@ -661,10 +696,13 @@ def scheduled_notes_list_view(request):
 
 @csrf_exempt
 def clear_chat_history(request):
-    """Clear chat message history"""
+    """Clear chat message history - user isolated"""
     if request.method == 'POST':
         try:
-            ChatMessage.objects.all().delete()
+            if request.user.is_authenticated:
+                ChatMessage.objects.filter(user=request.user).delete()
+            else:
+                ChatMessage.objects.filter(user__isnull=True).delete()
             return JsonResponse({
                 'success': True,
                 'message': 'Chat history cleared'
@@ -677,3 +715,397 @@ def clear_chat_history(request):
             }, status=500)
     
     return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+# Caregiver-Autistic Relationship Management Views
+@login_required
+def manage_care_relationships(request):
+    """Manage caregiver-autistic relationships"""
+    if request.user.role != 'caregiver':
+        messages.error(request, 'Only caregivers can manage care relationships.')
+        return redirect('dashboard')
+    
+    from .models import CareRelationship
+    from .forms import CareRelationshipForm
+    
+    if request.method == 'POST':
+        form = CareRelationshipForm(request.POST)
+        if form.is_valid():
+            relationship = form.save(commit=False)
+            relationship.caregiver = request.user
+            
+            # Check if relationship already exists
+            existing = CareRelationship.objects.filter(
+                caregiver=request.user,
+                autistic_person=relationship.autistic_person
+            ).first()
+            
+            if existing:
+                messages.error(request, 'You already have a relationship with this person.')
+            else:
+                relationship.save()
+                messages.success(request, f'Care relationship with {relationship.autistic_person.name} created successfully.')
+                return redirect('manage_care_relationships')
+    else:
+        form = CareRelationshipForm()
+    
+    # Get current relationships
+    relationships = CareRelationship.objects.filter(
+        caregiver=request.user,
+        is_active=True
+    ).select_related('autistic_person')
+    
+    return render(request, 'care/manage_relationships.html', {
+        'form': form,
+        'relationships': relationships
+    })
+
+@login_required
+def remove_care_relationship(request, relationship_id):
+    """Remove a care relationship"""
+    if request.user.role != 'caregiver':
+        messages.error(request, 'Access denied.')
+        return redirect('dashboard')
+    
+    from .models import CareRelationship
+    
+    try:
+        relationship = CareRelationship.objects.get(
+            id=relationship_id,
+            caregiver=request.user
+        )
+        relationship.is_active = False
+        relationship.save()
+        messages.success(request, f'Relationship with {relationship.autistic_person.name} removed.')
+    except CareRelationship.DoesNotExist:
+        messages.error(request, 'Relationship not found.')
+    
+    return redirect('manage_care_relationships')
+
+# Admin User Management Views
+@login_required
+def admin_manage_users(request):
+    """Admin user management"""
+    if request.user.role != 'admin':
+        messages.error(request, 'Access denied. Admin role required.')
+        return redirect('dashboard')
+    
+    from .forms import AdminUserForm
+    
+    if request.method == 'POST':
+        form = AdminUserForm(request.POST)
+        if form.is_valid():
+            user = form.save(commit=False)
+            user.set_password('DailyNest2024!')  # Default password
+            user.save()
+            messages.success(request, f'User {user.name} created successfully. Default password: DailyNest2024!')
+            return redirect('admin_manage_users')
+    else:
+        form = AdminUserForm()
+    
+    users = CustomUser.objects.all().order_by('-created_at')
+    
+    return render(request, 'admin/manage_users.html', {
+        'form': form,
+        'users': users
+    })
+
+@login_required
+def admin_assign_caregiver(request, autistic_id):
+    """Admin assign caregiver to autistic person"""
+    if request.user.role != 'admin':
+        messages.error(request, 'Access denied. Admin role required.')
+        return redirect('dashboard')
+    
+    from .models import CareRelationship
+    
+    try:
+        autistic_person = CustomUser.objects.get(id=autistic_id, role='autistic_person')
+    except CustomUser.DoesNotExist:
+        messages.error(request, 'Autistic person not found.')
+        return redirect('admin_dashboard')
+    
+    if request.method == 'POST':
+        caregiver_id = request.POST.get('caregiver_id')
+        relationship_type = request.POST.get('relationship_type', 'other')
+        
+        try:
+            caregiver = CustomUser.objects.get(id=caregiver_id, role='caregiver')
+            
+            # Check if relationship exists
+            existing = CareRelationship.objects.filter(
+                caregiver=caregiver,
+                autistic_person=autistic_person
+            ).first()
+            
+            if existing:
+                existing.is_active = True
+                existing.relationship_type = relationship_type
+                existing.save()
+                messages.success(request, f'Relationship between {caregiver.name} and {autistic_person.name} updated.')
+            else:
+                CareRelationship.objects.create(
+                    caregiver=caregiver,
+                    autistic_person=autistic_person,
+                    relationship_type=relationship_type
+                )
+                messages.success(request, f'Caregiver {caregiver.name} assigned to {autistic_person.name}.')
+        except CustomUser.DoesNotExist:
+            messages.error(request, 'Caregiver not found.')
+        
+        return redirect('admin_dashboard')
+    
+    caregivers = CustomUser.objects.filter(role='caregiver')
+    current_relationships = CareRelationship.objects.filter(
+        autistic_person=autistic_person,
+        is_active=True
+    ).select_related('caregiver')
+    
+    return render(request, 'admin/assign_caregiver.html', {
+        'autistic_person': autistic_person,
+        'caregivers': caregivers,
+        'current_relationships': current_relationships
+    })
+
+@login_required
+def admin_edit_user(request, user_id):
+    """Admin edit user"""
+    if request.user.role != 'admin':
+        messages.error(request, 'Access denied. Admin role required.')
+        return redirect('dashboard')
+    
+    try:
+        user = CustomUser.objects.get(id=user_id)
+    except CustomUser.DoesNotExist:
+        messages.error(request, 'User not found.')
+        return redirect('admin_manage_users')
+    
+    from .forms import AdminUserForm
+    
+    if request.method == 'POST':
+        form = AdminUserForm(request.POST, instance=user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'User {user.name} updated successfully.')
+            return redirect('admin_manage_users')
+    else:
+        form = AdminUserForm(instance=user)
+    
+    return render(request, 'admin/edit_user.html', {
+        'form': form,
+        'user': user
+    })
+
+@login_required
+def admin_delete_user(request, user_id):
+    """Admin delete user"""
+    if request.user.role != 'admin':
+        messages.error(request, 'Access denied. Admin role required.')
+        return redirect('dashboard')
+    
+    try:
+        user = CustomUser.objects.get(id=user_id)
+        if user == request.user:
+            messages.error(request, 'You cannot delete your own account.')
+        else:
+            user_name = user.name
+            user.delete()
+            messages.success(request, f'User {user_name} deleted successfully.')
+    except CustomUser.DoesNotExist:
+        messages.error(request, 'User not found.')
+    
+    return redirect('admin_manage_users')
+
+# Game Views
+@login_required
+def games_dashboard(request):
+    """Games dashboard view for autistic users"""
+    from .models import GameProgress, GameSession
+    
+    # Get user's game progress
+    user_progress = GameProgress.objects.filter(user=request.user)
+    
+    # Get recent game sessions
+    recent_sessions = GameSession.objects.filter(user=request.user).order_by('-started_at')[:5]
+    
+    # Calculate total stats
+    total_games_played = user_progress.count()
+    total_score = sum(progress.score for progress in user_progress)
+    total_time = sum(progress.time_spent for progress in user_progress)
+    
+    context = {
+        'user_progress': user_progress,
+        'recent_sessions': recent_sessions,
+        'total_games_played': total_games_played,
+        'total_score': total_score,
+        'total_time': total_time,
+        'available_games': [
+            {
+                'id': 'bubble_pop',
+                'name': 'Bubble Pop',
+                'description': 'A calming bubble popping game to reduce stress',
+                'icon': 'fas fa-bubbles',
+                'color': 'var(--calm-blue)',
+                'difficulty': 'Easy'
+            },
+            {
+                'id': 'memory_match',
+                'name': 'Memory Match',
+                'description': 'Improve memory and concentration skills',
+                'icon': 'fas fa-brain',
+                'color': 'var(--soft-green)',
+                'difficulty': 'Medium'
+            },
+            {
+                'id': 'puzzle_solve',
+                'name': 'Puzzle Solve',
+                'description': 'Logical thinking and problem-solving challenges',
+                'icon': 'fas fa-puzzle-piece',
+                'color': 'var(--gentle-purple)',
+                'difficulty': 'Medium'
+            },
+            {
+                'id': 'calm_colors',
+                'name': 'Calm Colors',
+                'description': 'Relaxing color therapy and mindfulness',
+                'icon': 'fas fa-palette',
+                'color': 'var(--warm-orange)',
+                'difficulty': 'Easy'
+            },
+            {
+                'id': 'breathing_exercise',
+                'name': 'Breathing Exercise',
+                'description': 'Guided breathing for relaxation and focus',
+                'icon': 'fas fa-wind',
+                'color': 'var(--soothing-teal)',
+                'difficulty': 'Easy'
+            }
+        ]
+    }
+    
+    return render(request, 'games/games_dashboard.html', context)
+
+@login_required
+def play_game(request, game_type):
+    """Play a specific game"""
+    from .models import GameSession, GameProgress
+    
+    # Validate game type
+    valid_games = [choice[0] for choice in GameProgress.GAME_CHOICES]
+    if game_type not in valid_games:
+        messages.error(request, 'Invalid game type.')
+        return redirect('games_dashboard')
+    
+    # Create or get active session
+    active_session, created = GameSession.objects.get_or_create(
+        user=request.user,
+        game_type=game_type,
+        ended_at__isnull=True,
+        defaults={'started_at': timezone.now()}
+    )
+    
+    # Get game template based on type
+    game_templates = {
+        'bubble_pop': 'games/bubble_pop.html',
+        'memory_match': 'games/memory_match.html',
+        'puzzle_solve': 'games/puzzle_solve.html',
+        'calm_colors': 'games/calm_colors.html',
+        'breathing_exercise': 'games/breathing_exercise.html',
+    }
+    
+    template_name = game_templates.get(game_type, 'games/default_game.html')
+    
+    context = {
+        'game_type': game_type,
+        'game_name': dict(GameProgress.GAME_CHOICES)[game_type],
+        'session_id': active_session.id,
+    }
+    
+    return render(request, template_name, context)
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def save_game_result(request):
+    """Save game results and update progress"""
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Authentication required'}, status=401)
+    
+    try:
+        data = json.loads(request.body)
+        session_id = data.get('session_id')
+        score = data.get('score', 0)
+        duration = data.get('duration', 0)
+        game_type = data.get('game_type')
+        session_data = data.get('session_data', {})
+        
+        if not all([session_id, game_type]):
+            return JsonResponse({'error': 'Missing required data'}, status=400)
+        
+        # Get the session and end it
+        try:
+            session = GameSession.objects.get(
+                id=session_id,
+                user=request.user,
+                ended_at__isnull=True
+            )
+            session.end_session(score, duration, session_data)
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Game result saved successfully',
+                'new_high_score': session.session_score
+            })
+            
+        except GameSession.DoesNotExist:
+            return JsonResponse({'error': 'Session not found'}, status=404)
+            
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        logger.error(f"Error saving game result: {str(e)}")
+        return JsonResponse({'error': 'Internal server error'}, status=500)
+
+@login_required
+def game_progress(request):
+    """View user's game progress and statistics"""
+    from .models import GameProgress, GameSession
+    
+    # Get detailed progress for each game
+    progress_data = []
+    for choice in GameProgress.GAME_CHOICES:
+        game_id, game_name = choice
+        try:
+            progress = GameProgress.objects.get(user=request.user, game_type=game_id)
+            progress_data.append({
+                'game_id': game_id,
+                'game_name': game_name,
+                'progress': progress,
+                'sessions_count': GameSession.objects.filter(
+                    user=request.user, 
+                    game_type=game_id
+                ).count()
+            })
+        except GameProgress.DoesNotExist:
+            progress_data.append({
+                'game_id': game_id,
+                'game_name': game_name,
+                'progress': None,
+                'sessions_count': 0
+            })
+    
+    # Get recent achievements and milestones
+    recent_achievements = []
+    for progress in GameProgress.objects.filter(user=request.user, score__gt=0):
+        if progress.score >= 100:
+            recent_achievements.append(f"Scored 100+ in {progress.get_game_type_display()}")
+        if progress.time_spent >= 300:  # 5 minutes
+            recent_achievements.append(f"Played {progress.get_game_type_display()} for 5+ minutes")
+    
+    context = {
+        'progress_data': progress_data,
+        'recent_achievements': recent_achievements[:5],
+        'total_games_played': GameProgress.objects.filter(user=request.user, score__gt=0).count(),
+        'total_score': sum(p.score for p in GameProgress.objects.filter(user=request.user)),
+        'total_time': sum(p.time_spent for p in GameProgress.objects.filter(user=request.user)),
+    }
+    
+    return render(request, 'games/game_progress.html', context)

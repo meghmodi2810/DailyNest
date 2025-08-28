@@ -5,16 +5,6 @@
 {% block content %}
 <div class="auth-container">
     <div class="auth-card">
-        <div class="auth-links">
-            <a href="{% url 'register' %}" class="auth-link">
-                <i class="fas fa-user-plus"></i>
-                Don't have an account? Register here
-            </a>
-            <a href="{% url 'forgot_password' %}" class="auth-link">
-                <i class="fas fa-key"></i>
-                Forgot your password?
-            </a>
-        </div>
         <div class="auth-header">
             <div class="auth-logo">
                 <i class="fas fa-user-shield"></i>
@@ -84,6 +74,11 @@
 
         <div class="auth-footer">
             <p>Don't have an account? <a href="{% url 'register' %}" class="auth-link">Create one here</a></p>
+            <br>
+            <p><a href="{% url 'forgot_password' %}" class="auth-link">
+                <i class="fas fa-key"></i>
+                Forgot your password?
+            </a></p>
         </div>
     </div>
 </div>

@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calming Session History - DailyNest</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .history-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 300;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .filters {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .filter-group label {
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .filter-group select {
+            padding: 8px 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .sessions-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .sessions-table th {
+            background: #667eea;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        .sessions-table td {
+            padding: 15px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .sessions-table tr:hover {
+            background: #f8f9ff;
+        }
+        
+        .emotion-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 20px;
+            padding: 5px 12px;
+            font-size: 0.9rem;
+        }
+        
+        .emotion-emoji {
+            font-size: 1.2rem;
+        }
+        
+        .duration-badge {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .completion-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .completion-badge.completed {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+        
+        .completion-badge.incomplete {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+        
+        .music-info {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .no-sessions {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .no-sessions-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+        
+        .back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 10px 15px;
+            text-decoration: none;
+            color: #666;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .back-button:hover {
+            background: #f5f5f5;
+            border-color: #667eea;
+            color: #667eea;
+        }
+        
+        .export-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .export-button:hover {
+            background: #5a6fd8;
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body>
+    <a href="{% if is_caregiver %}{% url 'caregiver_dashboard' %}{% else %}{% url 'autistic_dashboard' %}{% endif %}" class="back-button">← Back to Dashboard</a>
+    
+    <div class="history-container">
+        <div class="header">
+            <h1>📊 Calming Session History</h1>
+            <p>{% if is_caregiver %}Track calming sessions for individuals under your care{% else %}Your personal calming session history{% endif %}</p>
+        </div>
+        
+        <div class="content">
+            {% if sessions %}
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">{{ sessions|length }}</div>
+                    <div class="stat-label">Total Sessions</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{{ sessions|length|floatformat:0 }}%</div>
+                    <div class="stat-label">Completion Rate</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">15</div>
+                    <div class="stat-label">Avg Duration (min)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">😌</div>
+                    <div class="stat-label">Most Used Emotion</div>
+                </div>
+            </div>
+            
+            <div class="filters">
+                <div class="filter-group">
+                    <label for="emotionFilter">Filter by Emotion:</label>
+                    <select id="emotionFilter">
+                        <option value="">All Emotions</option>
+                        <option value="happy">🙂 Happy</option>
+                        <option value="sad">😢 Sad</option>
+                        <option value="angry">😡 Angry</option>
+                        <option value="sleepy">😴 Sleepy</option>
+                        <option value="anxious">😰 Anxious</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="completionFilter">Filter by Completion:</label>
+                    <select id="completionFilter">
+                        <option value="">All Sessions</option>
+                        <option value="completed">Completed Only</option>
+                        <option value="incomplete">Incomplete Only</option>
+                    </select>
+                </div>
+                
+                {% if is_caregiver %}
+                <div class="filter-group">
+                    <label for="userFilter">Filter by User:</label>
+                    <select id="userFilter">
+                        <option value="">All Users</option>
+                        {% for session in sessions %}
+                        <option value="{{ session.user.id }}">{{ session.user.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+                
+                <button class="export-button" onclick="exportData()">📊 Export Data</button>
+            </div>
+            
+            <table class="sessions-table">
+                <thead>
+                    <tr>
+                        {% if is_caregiver %}<th>User</th>{% endif %}
+                        <th>Emotion</th>
+                        <th>Music</th>
+                        <th>Duration</th>
+                        <th>Timer Used</th>
+                        <th>Completion</th>
+                        <th>Date & Time</th>
+                    </tr>
+                </thead>
+                <tbody id="sessionsTableBody">
+                    {% for session in sessions %}
+                    <tr data-emotion="{{ session.emotion_selected }}" 
+                        data-completion="{{ session.completed_successfully|yesno:'completed,incomplete' }}"
+                        {% if is_caregiver %}data-user="{{ session.user.id }}"{% endif %}>
+                        {% if is_caregiver %}
+                        <td>
+                            <strong>{{ session.user.name }}</strong>
+                            <div style="font-size: 0.8rem; color: #666;">{{ session.user.email }}</div>
+                        </td>
+                        {% endif %}
+                        <td>
+                            <div class="emotion-badge">
+                                <span class="emotion-emoji">
+                                    {% if session.emotion_selected == 'happy' %}🙂
+                                    {% elif session.emotion_selected == 'sad' %}😢
+                                    {% elif session.emotion_selected == 'angry' %}😡
+                                    {% elif session.emotion_selected == 'sleepy' %}😴
+                                    {% elif session.emotion_selected == 'anxious' %}😰
+                                    {% endif %}
+                                </span>
+                                {{ session.get_emotion_selected_display }}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="music-info">
+                                {{ session.music_played|title|default:"Not specified" }}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="duration-badge">
+                                {{ session.session_duration|floatformat:0 }}s
+                                ({{ session.session_duration|floatformat:0|add:0|floatformat:0|div:60|floatformat:1 }}m)
+                            </span>
+                        </td>
+                        <td>
+                            {% if session.timer_used %}
+                                {{ session.timer_used }} min
+                            {% else %}
+                                No timer
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="completion-badge {% if session.completed_successfully %}completed{% else %}incomplete{% endif %}">
+                                {% if session.completed_successfully %}✅ Completed{% else %}⏸️ Stopped Early{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <div>{{ session.created_at|date:"M d, Y" }}</div>
+                            <div style="font-size: 0.8rem; color: #666;">{{ session.created_at|time:"H:i" }}</div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            {% else %}
+            <div class="no-sessions">
+                <div class="no-sessions-icon">🎵</div>
+                <h3>No Calming Sessions Yet</h3>
+                <p>{% if is_caregiver %}No calming sessions have been recorded for individuals under your care.{% else %}You haven't started any calming sessions yet.{% endif %}</p>
+                <p><a href="{% url 'calming_module' %}">Start your first calming session →</a></p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        // Filter functionality
+        function filterSessions() {
+            const emotionFilter = document.getElementById('emotionFilter').value;
+            const completionFilter = document.getElementById('completionFilter').value;
+            const userFilter = document.getElementById('userFilter') ? document.getElementById('userFilter').value : '';
+            
+            const rows = document.querySelectorAll('#sessionsTableBody tr');
+            
+            rows.forEach(row => {
+                let show = true;
+                
+                // Filter by emotion
+                if (emotionFilter && row.dataset.emotion !== emotionFilter) {
+                    show = false;
+                }
+                
+                // Filter by completion
+                if (completionFilter && row.dataset.completion !== completionFilter) {
+                    show = false;
+                }
+                
+                // Filter by user (caregiver view only)
+                if (userFilter && row.dataset.user !== userFilter) {
+                    show = false;
+                }
+                
+                row.style.display = show ? '' : 'none';
+            });
+        }
+        
+        // Add event listeners to filters
+        document.getElementById('emotionFilter').addEventListener('change', filterSessions);
+        document.getElementById('completionFilter').addEventListener('change', filterSessions);
+        if (document.getElementById('userFilter')) {
+            document.getElementById('userFilter').addEventListener('change', filterSessions);
+        }
+        
+        // Export functionality
+        function exportData() {
+            const sessions = [];
+            const rows = document.querySelectorAll('#sessionsTableBody tr');
+            
+            rows.forEach(row => {
+                if (row.style.display !== 'none') {
+                    const cells = row.querySelectorAll('td');
+                    const sessionData = [];
+                    cells.forEach(cell => {
+                        sessionData.push(cell.textContent.trim());
+                    });
+                    sessions.push(sessionData);
+                }
+            });
+            
+            // Create CSV content
+            const headers = Array.from(document.querySelectorAll('.sessions-table th')).map(th => th.textContent.trim());
+            let csvContent = headers.join(',') + '\n';
+            
+            sessions.forEach(session => {
+                csvContent += session.map(field => `"${field.replace(/"/g, '""')}"`).join(',') + '\n';
+            });
+            
+            // Download CSV
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `calming_sessions_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+        
+        // Calculate and update stats
+        function updateStats() {
+            const visibleRows = document.querySelectorAll('#sessionsTableBody tr:not([style*="display: none"])');
+            const totalSessions = visibleRows.length;
+            
+            if (totalSessions > 0) {
+                let completedSessions = 0;
+                let totalDuration = 0;
+                const emotionCounts = {};
+                
+                visibleRows.forEach(row => {
+                    if (row.dataset.completion === 'completed') {
+                        completedSessions++;
+                    }
+                    
+                    const durationCell = row.querySelector('.duration-badge');
+                    if (durationCell) {
+                        const duration = parseInt(durationCell.textContent.match(/\d+/)[0]);
+                        totalDuration += duration;
+                    }
+                    
+                    const emotion = row.dataset.emotion;
+                    emotionCounts[emotion] = (emotionCounts[emotion] || 0) + 1;
+                });
+                
+                const completionRate = Math.round((completedSessions / totalSessions) * 100);
+                const avgDuration = Math.round(totalDuration / totalSessions / 60);
+                
+                // Find most common emotion
+                let mostCommonEmotion = '😌';
+                let maxCount = 0;
+                for (const [emotion, count] of Object.entries(emotionCounts)) {
+                    if (count > maxCount) {
+                        maxCount = count;
+                        const emojiMap = {
+                            'happy': '🙂',
+                            'sad': '😢',
+                            'angry': '😡',
+                            'sleepy': '😴',
+                            'anxious': '😰'
+                        };
+                        mostCommonEmotion = emojiMap[emotion] || '😌';
+                    }
+                }
+                
+                // Update stat cards
+                const statCards = document.querySelectorAll('.stat-number');
+                if (statCards[0]) statCards[0].textContent = totalSessions;
+                if (statCards[1]) statCards[1].textContent = completionRate + '%';
+                if (statCards[2]) statCards[2].textContent = avgDuration;
+                if (statCards[3]) statCards[3].textContent = mostCommonEmotion;
+            }
+        }
+        
+        // Update stats when filters change
+        document.getElementById('emotionFilter').addEventListener('change', () => {
+            setTimeout(updateStats, 100);
+        });
+        document.getElementById('completionFilter').addEventListener('change', () => {
+            setTimeout(updateStats, 100);
+        });
+        if (document.getElementById('userFilter')) {
+            document.getElementById('userFilter').addEventListener('change', () => {
+                setTimeout(updateStats, 100);
+            });
+        }
+    </script>
+</body>
+</html>

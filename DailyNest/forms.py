@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import authenticate
-from .models import CustomUser, CareNote, PasswordResetOTP, ScheduledNote
+from .models import CustomUser, CareNote, PasswordResetOTP, ScheduledNote, CareRelationship
 import uuid
 from datetime import datetime, timedelta
 
@@ -266,3 +266,71 @@ class ScheduledNoteForm(forms.ModelForm):
                 'type': 'datetime-local'
             }),
         }
+
+class CareRelationshipForm(forms.ModelForm):
+    """Form for creating care relationships"""
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Only show autistic persons in the dropdown
+        self.fields['autistic_person'].queryset = CustomUser.objects.filter(role='autistic_person')
+    
+    class Meta:
+        model = CareRelationship
+        fields = ['autistic_person', 'relationship_type', 'notes']
+        widgets = {
+            'autistic_person': forms.Select(attrs={
+                'class': 'form-control',
+                'required': True
+            }),
+            'relationship_type': forms.Select(attrs={
+                'class': 'form-control'
+            }),
+            'notes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Optional notes about the relationship...'
+            }),
+        }
+
+class AdminUserForm(forms.ModelForm):
+    """Form for admin to create/edit users"""
+    
+    class Meta:
+        model = CustomUser
+        fields = ['name', 'email', 'role', 'phone', 'address', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter full name',
+                'required': True
+            }),
+            'email': forms.EmailInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter email address',
+                'required': True
+            }),
+            'role': forms.Select(attrs={
+                'class': 'form-control',
+                'required': True
+            }),
+            'phone': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': '+1234567890'
+            }),
+            'address': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Enter address...'
+            }),
+            'is_active': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            }),
+        }
+    
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.username = user.email  # Use email as username
+        if commit:
+            user.save()
+        return user

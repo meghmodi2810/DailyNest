@@ -1,0 +1,500 @@
+{% extends 'base.html' %}
+
+{% block title %}Assign Caregiver - DailyNest Admin{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <div class="admin-header">
+        <div class="admin-title">
+            <h1><i class="fas fa-user-plus"></i> Assign Caregiver</h1>
+            <p>Assign a caregiver to {{ autistic_person.name }}</p>
+        </div>
+        <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <div class="assignment-container">
+        <div class="user-info-card">
+            <div class="user-avatar">
+                <i class="fas fa-user"></i>
+            </div>
+            <div class="user-details">
+                <h3>{{ autistic_person.name }}</h3>
+                <p class="user-email">{{ autistic_person.email }}</p>
+                <span class="role-badge autistic">
+                    <i class="fas fa-heart"></i> Autistic Person
+                </span>
+            </div>
+        </div>
+
+        <form method="post" class="assignment-form">
+            {% csrf_token %}
+            
+            <div class="form-section">
+                <h3><i class="fas fa-users"></i> Select Caregiver</h3>
+                <div class="caregiver-grid">
+                    {% for caregiver in caregivers %}
+                    <div class="caregiver-card">
+                        <input type="radio" name="caregiver_id" value="{{ caregiver.id }}" id="caregiver_{{ caregiver.id }}" required>
+                        <label for="caregiver_{{ caregiver.id }}" class="caregiver-label">
+                            <div class="caregiver-avatar">
+                                <i class="fas fa-user-nurse"></i>
+                            </div>
+                            <div class="caregiver-info">
+                                <h4>{{ caregiver.name }}</h4>
+                                <p>{{ caregiver.email }}</p>
+                                {% if caregiver.phone %}
+                                <p class="phone"><i class="fas fa-phone"></i> {{ caregiver.phone }}</p>
+                                {% endif %}
+                            </div>
+                            <div class="selection-indicator">
+                                <i class="fas fa-check"></i>
+                            </div>
+                        </label>
+                    </div>
+                    {% empty %}
+                    <div class="empty-state">
+                        <i class="fas fa-users-slash"></i>
+                        <h3>No Caregivers Available</h3>
+                        <p>There are no caregivers registered in the system.</p>
+                        <a href="{% url 'admin_manage_users' %}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Add Caregiver
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {% if caregivers %}
+            <div class="form-section">
+                <h3><i class="fas fa-heart"></i> Relationship Type</h3>
+                <div class="relationship-options">
+                    <div class="relationship-option">
+                        <input type="radio" name="relationship_type" value="parent" id="parent" checked>
+                        <label for="parent">
+                            <i class="fas fa-home"></i>
+                            <span>Parent</span>
+                        </label>
+                    </div>
+                    <div class="relationship-option">
+                        <input type="radio" name="relationship_type" value="sibling" id="sibling">
+                        <label for="sibling">
+                            <i class="fas fa-users"></i>
+                            <span>Sibling</span>
+                        </label>
+                    </div>
+                    <div class="relationship-option">
+                        <input type="radio" name="relationship_type" value="guardian" id="guardian">
+                        <label for="guardian">
+                            <i class="fas fa-shield-alt"></i>
+                            <span>Guardian</span>
+                        </label>
+                    </div>
+                    <div class="relationship-option">
+                        <input type="radio" name="relationship_type" value="therapist" id="therapist">
+                        <label for="therapist">
+                            <i class="fas fa-user-md"></i>
+                            <span>Therapist</span>
+                        </label>
+                    </div>
+                    <div class="relationship-option">
+                        <input type="radio" name="relationship_type" value="other" id="other">
+                        <label for="other">
+                            <i class="fas fa-user-friends"></i>
+                            <span>Other</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-link"></i> Assign Caregiver
+                </button>
+                <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<style>
+    .admin-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .admin-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .admin-title h1 {
+        font-family: 'Poppins', sans-serif;
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0;
+        color: var(--calm-blue);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .admin-title p {
+        margin: 0.5rem 0 0 0;
+        color: #64748b;
+        font-size: 1rem;
+    }
+
+    .assignment-container {
+        background: var(--surface-light);
+        border-radius: var(--border-radius);
+        padding: 2rem;
+        box-shadow: var(--shadow-md);
+    }
+
+    body[data-theme="dark"] .assignment-container {
+        background: var(--surface-dark);
+    }
+
+    .user-info-card {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.5rem;
+        background: rgba(99, 102, 241, 0.05);
+        border: 2px solid rgba(99, 102, 241, 0.1);
+        border-radius: var(--border-radius);
+        margin-bottom: 2rem;
+    }
+
+    .user-avatar {
+        width: 60px;
+        height: 60px;
+        background: var(--primary-gradient);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+    }
+
+    .user-details h3 {
+        margin: 0 0 0.25rem 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-light);
+    }
+
+    body[data-theme="dark"] .user-details h3 {
+        color: var(--text-dark);
+    }
+
+    .user-email {
+        margin: 0 0 0.5rem 0;
+        color: #64748b;
+        font-size: 0.9rem;
+    }
+
+    .role-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .role-badge.autistic {
+        background: rgba(236, 72, 153, 0.1);
+        color: #be185d;
+        border: 1px solid rgba(236, 72, 153, 0.2);
+    }
+
+    .form-section {
+        margin-bottom: 2rem;
+    }
+
+    .form-section h3 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: var(--text-light);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    body[data-theme="dark"] .form-section h3 {
+        color: var(--text-dark);
+    }
+
+    .caregiver-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1rem;
+    }
+
+    .caregiver-card {
+        position: relative;
+    }
+
+    .caregiver-card input[type="radio"] {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .caregiver-label {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        border: 2px solid #e2e8f0;
+        border-radius: var(--border-radius);
+        cursor: pointer;
+        transition: var(--transition);
+        background: white;
+        position: relative;
+    }
+
+    body[data-theme="dark"] .caregiver-label {
+        background: #1f2937;
+        border-color: #374151;
+    }
+
+    .caregiver-label:hover {
+        border-color: var(--calm-blue);
+        background: rgba(99, 102, 241, 0.05);
+    }
+
+    .caregiver-card input[type="radio"]:checked + .caregiver-label {
+        border-color: var(--calm-blue);
+        background: rgba(99, 102, 241, 0.1);
+    }
+
+    .caregiver-avatar {
+        width: 50px;
+        height: 50px;
+        background: var(--accent-gradient);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.25rem;
+    }
+
+    .caregiver-info {
+        flex: 1;
+    }
+
+    .caregiver-info h4 {
+        margin: 0 0 0.25rem 0;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-light);
+    }
+
+    body[data-theme="dark"] .caregiver-info h4 {
+        color: var(--text-dark);
+    }
+
+    .caregiver-info p {
+        margin: 0;
+        color: #64748b;
+        font-size: 0.875rem;
+    }
+
+    .caregiver-info .phone {
+        margin-top: 0.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .selection-indicator {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--calm-blue);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: var(--transition);
+    }
+
+    .caregiver-card input[type="radio"]:checked + .caregiver-label .selection-indicator {
+        opacity: 1;
+    }
+
+    .relationship-options {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+    }
+
+    .relationship-option {
+        position: relative;
+    }
+
+    .relationship-option input[type="radio"] {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .relationship-option label {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1rem;
+        border: 2px solid #e2e8f0;
+        border-radius: var(--border-radius);
+        cursor: pointer;
+        transition: var(--transition);
+        background: white;
+        text-align: center;
+    }
+
+    body[data-theme="dark"] .relationship-option label {
+        background: #1f2937;
+        border-color: #374151;
+    }
+
+    .relationship-option label:hover {
+        border-color: var(--calm-blue);
+        background: rgba(99, 102, 241, 0.05);
+    }
+
+    .relationship-option input[type="radio"]:checked + label {
+        border-color: var(--calm-blue);
+        background: rgba(99, 102, 241, 0.1);
+    }
+
+    .relationship-option label i {
+        font-size: 1.5rem;
+        color: var(--calm-blue);
+    }
+
+    .relationship-option label span {
+        font-weight: 600;
+        color: var(--text-light);
+    }
+
+    body[data-theme="dark"] .relationship-option label span {
+        color: var(--text-dark);
+    }
+
+    .empty-state {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 3rem;
+        color: #64748b;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        color: #94a3b8;
+    }
+
+    .empty-state h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.25rem;
+        color: var(--text-light);
+    }
+
+    body[data-theme="dark"] .empty-state h3 {
+        color: var(--text-dark);
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+        padding-top: 1rem;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    body[data-theme="dark"] .form-actions {
+        border-color: #374151;
+    }
+
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: var(--border-radius);
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        transition: var(--transition);
+        font-size: 1rem;
+    }
+
+    .btn-primary {
+        background: var(--primary-gradient);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .btn-secondary {
+        background: #6b7280;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #4b5563;
+        transform: translateY(-2px);
+    }
+
+    @media (max-width: 768px) {
+        .admin-container {
+            padding: 1rem;
+        }
+
+        .admin-header {
+            flex-direction: column;
+            gap: 1rem;
+            text-align: center;
+        }
+
+        .user-info-card {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .caregiver-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .relationship-options {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .form-actions {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}
