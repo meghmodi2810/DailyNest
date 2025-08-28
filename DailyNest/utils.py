@@ -54,17 +54,29 @@ class EmotionDetector:
             return
             
         try:
-            # Load face emotion model
-            model_path = os.path.join(settings.BASE_DIR, 'models', 'face_emotion', 'fer.h5')
-            if os.path.exists(model_path):
-                self.face_model = load_model(model_path)
-                logger.info("Face emotion model loaded successfully")
-            else:
-                # Try alternative model
-                alt_path = os.path.join(settings.BASE_DIR, 'models', 'face_emotion', 'best_mobilenet_model.h5')
-                if os.path.exists(alt_path):
-                    self.face_model = load_model(alt_path)
-                    logger.info("Alternative face emotion model loaded")
+            # Load face emotion model - try emotion_model.hdf5 first
+            model_paths = [
+                os.path.join(settings.BASE_DIR, 'models', 'face_emotion', 'emotion_model.hdf5'),
+                os.path.join(settings.BASE_DIR, 'emotion_model.hdf5'),
+                os.path.join(settings.BASE_DIR, 'models', 'face_emotion', 'fer.h5'),
+                os.path.join(settings.BASE_DIR, 'models', 'face_emotion', 'best_mobilenet_model.h5')
+            ]
+            
+            model_loaded = False
+            for model_path in model_paths:
+                if os.path.exists(model_path) and os.path.getsize(model_path) > 1000:
+                    try:
+                        self.face_model = load_model(model_path)
+                        logger.info(f"Face emotion model loaded successfully from: {os.path.basename(model_path)}")
+                        model_loaded = True
+                        break
+                    except Exception as e:
+                        logger.warning(f"Failed to load {model_path}: {e}")
+                        continue
+            
+            if not model_loaded:
+                logger.warning("No emotion model could be loaded")
+                self.face_model = None
             
             # Load face cascade for detection
             cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
@@ -123,10 +135,25 @@ class EmotionDetector:
             
             # Extract and preprocess face
             face_roi = gray[y:y+h, x:x+w]
-            face_roi = cv2.resize(face_roi, (48, 48))
+            
+            # Get the expected input dimensions from the model
+            expected_height = self.face_model.input_shape[1]
+            expected_width = self.face_model.input_shape[2]
+            expected_channels = self.face_model.input_shape[3]
+            
+            # Resize to the model's expected input size
+            face_roi = cv2.resize(face_roi, (expected_width, expected_height))
             face_roi = face_roi.astype('float32') / 255.0
-            face_roi = np.expand_dims(face_roi, axis=0)
-            face_roi = np.expand_dims(face_roi, axis=-1)
+            
+            # Reshape for model input based on expected shape
+            if expected_channels == 1:
+                # Grayscale input
+                face_roi = face_roi.reshape(1, expected_height, expected_width, 1)
+            else:
+                # RGB input - convert grayscale to RGB
+                face_roi = cv2.cvtColor(face_roi, cv2.COLOR_GRAY2RGB)
+                face_roi = face_roi.astype('float32') / 255.0
+                face_roi = face_roi.reshape(1, expected_height, expected_width, expected_channels)
             
             # Predict emotion
             predictions = self.face_model.predict(face_roi, verbose=0)

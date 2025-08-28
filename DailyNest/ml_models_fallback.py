@@ -18,10 +18,11 @@ _emotion_detector_lock = threading.Lock()
 _speech_processor_lock = threading.Lock()
 
 class FallbackEmotionDetector:
-    """Fallback emotion detection using OpenCV and basic ML"""
+    """Enhanced emotion detection using emotion_model.hdf5 with fallbacks"""
     
     def __init__(self):
         self.face_cascade = None
+        self.emotion_model = None
         self.emotion_labels = ['angry', 'disgust', 'fear', 'happy', 'neutral', 'sad', 'surprised']
         self._initialized = False
         self._initialization_lock = threading.Lock()
@@ -35,7 +36,7 @@ class FallbackEmotionDetector:
                     self._initialized = True
     
     def _initialize(self):
-        """Initialize face detection"""
+        """Initialize face detection and emotion model"""
         try:
             import cv2
             
@@ -43,14 +44,113 @@ class FallbackEmotionDetector:
             cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
             self.face_cascade = cv2.CascadeClassifier(cascade_path)
             
-            logger.info("Fallback emotion detector initialized successfully")
+            # Load the emotion_model.hdf5
+            self._load_emotion_model()
+            
+            logger.info("Enhanced emotion detector initialized successfully")
             
         except Exception as e:
-            logger.error(f"Fallback emotion detector initialization error: {e}")
-            raise
+            logger.error(f"Enhanced emotion detector initialization error: {e}")
+            # Continue with fallback initialization
+            self._initialize_fallback()
+    
+    def _load_emotion_model(self):
+        """Load the emotion_model.hdf5 model"""
+        try:
+            import tensorflow as tf
+            
+            # Log TensorFlow version for debugging
+            logger.info(f"TensorFlow version: {tf.__version__}")
+            
+            # Try multiple paths for the emotion model
+            model_paths = [
+                os.path.join(settings.BASE_DIR, 'models', 'face_emotion', 'emotion_model.hdf5'),
+                os.path.join(settings.BASE_DIR, 'emotion_model.hdf5'),
+                'models/face_emotion/emotion_model.hdf5',
+                'emotion_model.hdf5'
+            ]
+            
+            model_loaded = False
+            for model_path in model_paths:
+                if os.path.exists(model_path) and os.path.getsize(model_path) > 1000:
+                    try:
+                        logger.info(f"Attempting to load model from: {model_path}")
+                        self.emotion_model = tf.keras.models.load_model(model_path, compile=False)
+                        logger.info(f"Emotion model loaded successfully from: {model_path}")
+                        logger.info(f"Model input shape: {self.emotion_model.input_shape}")
+                        logger.info(f"Model output shape: {self.emotion_model.output_shape}")
+                        model_loaded = True
+                        break
+                    except Exception as e:
+                        logger.warning(f"Failed to load model from {model_path}: {e}")
+                        # Try to get more details about the error
+                        if "hdf5" in str(e).lower():
+                            logger.warning("HDF5 model loading failed - this might be a format compatibility issue")
+                        elif "shape" in str(e).lower():
+                            logger.warning("Shape-related error - model might have incompatible architecture")
+                        continue
+            
+            if not model_loaded:
+                logger.warning("No emotion model could be loaded, will use fallback methods")
+                self.emotion_model = None
+            else:
+                # Test the loaded model
+                logger.info("Testing loaded model...")
+                if not self.test_model():
+                    logger.warning("Model test failed, will use fallback methods")
+                    self.emotion_model = None
+                
+        except Exception as e:
+            logger.error(f"Emotion model loading error: {e}")
+            self.emotion_model = None
+    
+    def _initialize_fallback(self):
+        """Initialize fallback components if main initialization fails"""
+        try:
+            import cv2
+            
+            # Ensure face cascade is loaded
+            if self.face_cascade is None:
+                cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+                self.face_cascade = cv2.CascadeClassifier(cascade_path)
+            
+            logger.info("Fallback emotion detection initialized")
+            
+        except Exception as e:
+            logger.error(f"Fallback initialization error: {e}")
+    
+    def test_model(self):
+        """Test the loaded model with dummy data to verify it works"""
+        try:
+            if self.emotion_model is None:
+                logger.warning("No model loaded to test")
+                return False
+            
+            # Create dummy input based on model's expected shape
+            expected_shape = self.emotion_model.input_shape
+            if len(expected_shape) != 4:
+                logger.error(f"Invalid model shape: {expected_shape}")
+                return False
+            
+            # Create random dummy data
+            import numpy as np
+            dummy_input = np.random.random((1, expected_shape[1], expected_shape[2], expected_shape[3]))
+            
+            # Try prediction
+            try:
+                prediction = self.emotion_model.predict(dummy_input, verbose=0)
+                logger.info(f"Model test successful - output shape: {prediction.shape}")
+                return True
+            except Exception as e:
+                logger.error(f"Model test failed: {e}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Model testing error: {e}")
+            return False
     
     def detect_face_emotion(self, image_data):
-        """Detect face emotion using OpenCV-based analysis"""
+        """Detect face emotion using ML model or fallback"""
         self._ensure_initialized()
         
         try:
@@ -71,12 +171,122 @@ class FallbackEmotionDetector:
             
             # Process the largest face
             largest_face = max(faces, key=lambda x: x[2] * x[3])
-            emotion, confidence = self._analyze_face_emotion(image, largest_face)
             
+            # Try ML model first, then fallback
+            if self.emotion_model is not None:
+                emotion, confidence = self._predict_emotion_ml(image, largest_face)
+                if confidence > 0.3:  # Only use ML prediction if confident
+                    return emotion, confidence
+            
+            # Use fallback method
+            emotion, confidence = self._analyze_face_emotion_fallback(image, largest_face)
             return emotion, confidence
             
         except Exception as e:
             logger.error(f"Face emotion detection error: {e}")
+            return "neutral", 0.0
+    
+    def _predict_emotion_ml(self, image, face_rect):
+        """Predict emotion using the loaded ML model"""
+        try:
+            import cv2
+            
+            # Validate model is loaded
+            if self.emotion_model is None:
+                logger.error("Emotion model not loaded")
+                return "neutral", 0.0
+            
+            # Validate input image
+            if image is None or image.size == 0:
+                logger.error("Invalid input image")
+                return "neutral", 0.0
+            
+            x, y, w, h = face_rect
+            
+            # Validate face rectangle
+            if w <= 0 or h <= 0 or x < 0 or y < 0:
+                logger.error(f"Invalid face rectangle: x={x}, y={y}, w={w}, h={h}")
+                return "neutral", 0.0
+            
+            # Extract face region
+            face_roi = image[y:y+h, x:x+w]
+            if face_roi.size == 0:
+                logger.error("Empty face ROI")
+                return "neutral", 0.0
+                
+            gray_face = cv2.cvtColor(face_roi, cv2.COLOR_BGR2GRAY)
+            
+            # Get the expected input dimensions from the model
+            if not hasattr(self.emotion_model, 'input_shape') or len(self.emotion_model.input_shape) != 4:
+                logger.error(f"Invalid model input shape: {getattr(self.emotion_model, 'input_shape', 'None')}")
+                return "neutral", 0.0
+                
+            expected_height = self.emotion_model.input_shape[1]
+            expected_width = self.emotion_model.input_shape[2]
+            expected_channels = self.emotion_model.input_shape[3]
+            
+            logger.info(f"Expected model input: {expected_height}x{expected_width}x{expected_channels}")
+            
+            # Resize to the model's expected input size
+            resized_face = cv2.resize(gray_face, (expected_width, expected_height))
+            
+            # Normalize pixel values
+            normalized_face = resized_face.astype('float32') / 255.0
+            
+            # Reshape for model input based on expected shape
+            if expected_channels == 1:
+                # Grayscale input
+                input_face = normalized_face.reshape(1, expected_height, expected_width, 1)
+            else:
+                # RGB input - convert grayscale to RGB
+                input_face = cv2.cvtColor(resized_face, cv2.COLOR_GRAY2RGB)
+                input_face = input_face.astype('float32') / 255.0
+                input_face = input_face.reshape(1, expected_height, expected_width, expected_channels)
+            
+            logger.info(f"Prepared input shape: {input_face.shape}, Expected: {self.emotion_model.input_shape}")
+            
+            # Validate input shape matches expected
+            if input_face.shape != (1, expected_height, expected_width, expected_channels):
+                logger.error(f"Input shape mismatch: got {input_face.shape}, expected (1, {expected_height}, {expected_width}, {expected_channels})")
+                return "neutral", 0.0
+            
+            # Make prediction
+            try:
+                predictions = self.emotion_model.predict(input_face, verbose=0)
+                
+                # Get emotion with highest probability
+                emotion_idx = np.argmax(predictions[0])
+                confidence = float(predictions[0][emotion_idx])
+                
+                emotion = self.emotion_labels[emotion_idx]
+                
+                logger.info(f"ML model prediction: {emotion} (confidence: {confidence:.3f})")
+                return emotion, confidence
+                
+            except Exception as predict_error:
+                logger.error(f"Model prediction failed: {predict_error}")
+                # Try to recompile the model if it's not compiled
+                try:
+                    if not hasattr(self.emotion_model, '_compiled'):
+                        logger.info("Attempting to compile model...")
+                        self.emotion_model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+                        self.emotion_model._compiled = True
+                        
+                        # Try prediction again
+                        predictions = self.emotion_model.predict(input_face, verbose=0)
+                        emotion_idx = np.argmax(predictions[0])
+                        confidence = float(predictions[0][emotion_idx])
+                        emotion = self.emotion_labels[emotion_idx]
+                        
+                        logger.info(f"ML model prediction after compilation: {emotion} (confidence: {confidence:.3f})")
+                        return emotion, confidence
+                        
+                except Exception as compile_error:
+                    logger.error(f"Model compilation failed: {compile_error}")
+                    raise predict_error
+            
+        except Exception as e:
+            logger.error(f"ML emotion prediction error: {e}")
             return "neutral", 0.0
     
     def _process_image_input(self, image_data):
@@ -110,8 +320,8 @@ class FallbackEmotionDetector:
             logger.error(f"Face detection error: {e}")
             return []
     
-    def _analyze_face_emotion(self, image, face_rect):
-        """Analyze emotion for a specific face region using OpenCV features"""
+    def _analyze_face_emotion_fallback(self, image, face_rect):
+        """Fallback face emotion analysis using OpenCV features"""
         try:
             import cv2
             x, y, w, h = face_rect
@@ -126,12 +336,12 @@ class FallbackEmotionDetector:
             # Classify emotion based on features
             emotion, confidence = self._classify_emotion(features)
             
-            logger.info(f"Emotion detected: {emotion} (confidence: {confidence:.3f})")
+            logger.info(f"Fallback emotion detected: {emotion} (confidence: {confidence:.3f})")
             
             return emotion, confidence
             
         except Exception as e:
-            logger.error(f"Face emotion analysis error: {e}")
+            logger.error(f"Fallback face emotion analysis error: {e}")
             return "neutral", 0.0
     
     def _extract_facial_features(self, gray_face):

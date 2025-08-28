@@ -52,6 +52,8 @@ class ProductionEmotionDetector:
             
         try:
             model_paths = [
+                os.path.join(settings.BASE_DIR, 'models', 'face_emotion', 'emotion_model.hdf5'),
+                os.path.join(settings.BASE_DIR, 'emotion_model.hdf5'),
                 os.path.join(settings.BASE_DIR, 'models', 'face_emotion', 'fer.h5'),
                 os.path.join(settings.BASE_DIR, 'models', 'face_emotion', 'best_mobilenet_model.h5'),
                 os.path.join(settings.BASE_DIR, 'emotion_model_weights.h5')
