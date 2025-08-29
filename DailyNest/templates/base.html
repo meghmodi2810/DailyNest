@@ -634,6 +634,10 @@
                     <i class="fas fa-comments"></i>
                     <span>Chat</span>
                 </a>
+                <a href="{% url 'games_hub' %}" class="nav-link">
+                    <i class="fas fa-gamepad"></i>
+                    <span>Games</span>
+                </a>
                 <div class="user-menu">
                     <span class="user-greeting">{{ user.name }}</span>
                     <div class="user-role-badge">{{ user.get_role_display }}</div>

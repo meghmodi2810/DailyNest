@@ -1,0 +1,759 @@
+{% extends 'base.html' %}
+
+{% block title %}Therapeutic Games - DailyNest{% endblock %}
+
+{% block content %}
+<div class="text-center" style="margin-bottom: 3rem;">
+    <h1 class="text-gradient" style="font-size: 3rem; margin-bottom: 1rem;">
+        <i class="fas fa-gamepad"></i> Therapeutic Games
+    </h1>
+    <p style="font-size: 1.3rem; color: var(--text-light); max-width: 800px; margin: 0 auto; line-height: 1.6;">
+        Discover calming and engaging games designed specifically for autism support. 
+        Each game focuses on reducing stress, improving focus, and providing a safe space for relaxation.
+    </p>
+</div>
+
+<div class="games-grid">
+    <!-- Calm Maze Game -->
+    <div class="game-card card animate-fade-in-up">
+        <div class="game-icon">
+            <i class="fas fa-puzzle-piece"></i>
+        </div>
+        <div class="game-content">
+            <h3>Calm Maze</h3>
+            <p>Navigate through peaceful mazes at your own pace. Perfect for developing problem-solving skills and patience.</p>
+            <div class="game-features">
+                <span class="feature-tag"><i class="fas fa-brain"></i> Problem Solving</span>
+                <span class="feature-tag"><i class="fas fa-heart"></i> Stress Relief</span>
+                <span class="feature-tag"><i class="fas fa-clock"></i> Self-Paced</span>
+            </div>
+            <div class="game-stats">
+                <div class="stat">
+                    <span class="stat-label">Difficulty</span>
+                    <div class="difficulty-bars">
+                        <div class="bar active"></div>
+                        <div class="bar active"></div>
+                        <div class="bar"></div>
+                    </div>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Duration</span>
+                    <span class="stat-value">5-15 min</span>
+                </div>
+            </div>
+        </div>
+        <div class="game-actions">
+            <a href="{% url 'calm_maze' %}" class="btn btn-primary">
+                <i class="fas fa-play"></i> Play Now
+            </a>
+            <button class="btn-icon" onclick="showGameInfo('maze')" aria-label="Game Information">
+                <i class="fas fa-info-circle"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Bubble Pop Game -->
+    <div class="game-card card animate-fade-in-up" style="animation-delay: 0.1s;">
+        <div class="game-icon">
+            <i class="fas fa-circle"></i>
+        </div>
+        <div class="game-content">
+            <h3>Calming Bubble Pop</h3>
+            <p>Pop colorful bubbles in this soothing game designed to improve focus and provide sensory satisfaction.</p>
+            <div class="game-features">
+                <span class="feature-tag"><i class="fas fa-eye"></i> Focus Training</span>
+                <span class="feature-tag"><i class="fas fa-hand-pointer"></i> Motor Skills</span>
+                <span class="feature-tag"><i class="fas fa-palette"></i> Visual Stimulation</span>
+            </div>
+            <div class="game-stats">
+                <div class="stat">
+                    <span class="stat-label">Difficulty</span>
+                    <div class="difficulty-bars">
+                        <div class="bar active"></div>
+                        <div class="bar"></div>
+                        <div class="bar"></div>
+                    </div>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Duration</span>
+                    <span class="stat-value">1-5 min</span>
+                </div>
+            </div>
+        </div>
+        <div class="game-actions">
+            <a href="{% url 'bubble_pop' %}" class="btn btn-secondary">
+                <i class="fas fa-play"></i> Play Now
+            </a>
+            <button class="btn-icon" onclick="showGameInfo('bubble')" aria-label="Game Information">
+                <i class="fas fa-info-circle"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Memory Match Game -->
+    <div class="game-card card animate-fade-in-up" style="animation-delay: 0.2s;">
+        <div class="game-icon">
+            <i class="fas fa-th"></i>
+        </div>
+        <div class="game-content">
+            <h3>Memory Match</h3>
+            <p>Improve memory and concentration with this gentle card matching game featuring calming imagery.</p>
+            <div class="game-features">
+                <span class="feature-tag"><i class="fas fa-brain"></i> Memory Training</span>
+                <span class="feature-tag"><i class="fas fa-eye"></i> Concentration</span>
+                <span class="feature-tag"><i class="fas fa-leaf"></i> Calming</span>
+            </div>
+            <div class="game-stats">
+                <div class="stat">
+                    <span class="stat-label">Difficulty</span>
+                    <div class="difficulty-bars">
+                        <div class="bar active"></div>
+                        <div class="bar active"></div>
+                        <div class="bar"></div>
+                    </div>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Duration</span>
+                    <span class="stat-value">3-10 min</span>
+                </div>
+            </div>
+        </div>
+        <div class="game-actions">
+            <a href="{% url 'memory_match' %}" class="btn btn-accent">
+                <i class="fas fa-play"></i> Play Now
+            </a>
+            <button class="btn-icon" onclick="showGameInfo('memory')" aria-label="Game Information">
+                <i class="fas fa-info-circle"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Breathing Garden Game -->
+    <div class="game-card card animate-fade-in-up" style="animation-delay: 0.3s;">
+        <div class="game-icon">
+            <i class="fas fa-wind"></i>
+        </div>
+        <div class="game-content">
+            <h3>Breathing Garden</h3>
+            <p>Practice mindful breathing with beautiful nature visuals. Find your calm and center yourself.</p>
+            <div class="game-features">
+                <span class="feature-tag"><i class="fas fa-heart"></i> Mindfulness</span>
+                <span class="feature-tag"><i class="fas fa-leaf"></i> Relaxation</span>
+                <span class="feature-tag"><i class="fas fa-clock"></i> 5-20 min</span>
+            </div>
+            <div class="game-stats">
+                <div class="stat">
+                    <span class="stat-label">Difficulty</span>
+                    <div class="difficulty-bars">
+                        <div class="bar active"></div>
+                        <div class="bar"></div>
+                        <div class="bar"></div>
+                    </div>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Duration</span>
+                    <span class="stat-value">5-20 min</span>
+                </div>
+            </div>
+        </div>
+        <div class="game-actions">
+            <a href="{% url 'breathing_garden' %}" class="btn btn-primary">
+                <i class="fas fa-play"></i> Play Now
+            </a>
+            <button class="btn-icon" onclick="showGameInfo('breathing')" aria-label="Game Information">
+                <i class="fas fa-info-circle"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Guess the Bowl Game -->
+    <div class="game-card card animate-fade-in-up" style="animation-delay: 0.4s;">
+        <div class="game-icon">
+            <i class="fas fa-search"></i>
+        </div>
+        <div class="game-content">
+            <h3>Guess the Bowl</h3>
+            <p>Watch carefully as the bowls shuffle, then find the ball! A classic memory and attention game.</p>
+            <div class="game-features">
+                <span class="feature-tag"><i class="fas fa-eye"></i> Attention</span>
+                <span class="feature-tag"><i class="fas fa-brain"></i> Memory</span>
+                <span class="feature-tag"><i class="fas fa-trophy"></i> Challenge</span>
+            </div>
+            <div class="game-stats">
+                <div class="stat">
+                    <span class="stat-label">Difficulty</span>
+                    <div class="difficulty-bars">
+                        <div class="bar active"></div>
+                        <div class="bar active"></div>
+                        <div class="bar active"></div>
+                    </div>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Duration</span>
+                    <span class="stat-value">3-10 min</span>
+                </div>
+            </div>
+        </div>
+        <div class="game-actions">
+            <a href="{% url 'guess_the_bowl' %}" class="btn btn-primary">
+                <i class="fas fa-play"></i> Play Now
+            </a>
+            <button class="btn-icon" onclick="showGameInfo('guess')" aria-label="Game Information">
+                <i class="fas fa-info-circle"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Game Information Modal -->
+<div id="gameInfoModal" class="modal hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTitle">Game Information</h3>
+            <button class="modal-close" onclick="hideGameInfo()" aria-label="Close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <!-- Content will be populated by JavaScript -->
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="hideGameInfo()">Close</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.games-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 2rem;
+    margin-bottom: 3rem;
+}
+
+.game-card {
+    position: relative;
+    padding: 2rem;
+    transition: var(--transition);
+    border: 2px solid transparent;
+    background: var(--surface-light);
+    overflow: hidden;
+}
+
+.game-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--primary-gradient);
+    transform: scaleX(0);
+    transition: var(--transition);
+}
+
+.game-card:hover::before {
+    transform: scaleX(1);
+}
+
+.game-card:hover {
+    transform: translateY(-8px);
+    border-color: var(--calm-blue);
+    box-shadow: var(--shadow-xl);
+}
+
+body[data-theme="dark"] .game-card {
+    background: var(--surface-dark);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+body[data-theme="dark"] .game-card:hover {
+    border-color: var(--calm-blue);
+}
+
+body[data-theme="high-contrast"] .game-card {
+    background: #000000;
+    border: 3px solid #ffffff;
+}
+
+.game-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: var(--primary-gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    font-size: 2rem;
+    color: white;
+    box-shadow: var(--shadow-lg);
+}
+
+.game-content h3 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-light);
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+body[data-theme="dark"] .game-content h3 {
+    color: var(--text-dark);
+}
+
+.game-content p {
+    color: #64748b;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+body[data-theme="dark"] .game-content p {
+    color: #94a3b8;
+}
+
+.game-features {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+}
+
+.feature-tag {
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--calm-blue);
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+body[data-theme="dark"] .feature-tag {
+    background: rgba(99, 102, 241, 0.2);
+    border-color: rgba(99, 102, 241, 0.3);
+}
+
+.game-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: rgba(99, 102, 241, 0.05);
+    border-radius: var(--border-radius);
+    border: 1px solid rgba(99, 102, 241, 0.1);
+}
+
+body[data-theme="dark"] .game-stats {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: rgba(99, 102, 241, 0.2);
+}
+
+.stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+body[data-theme="dark"] .stat-label {
+    color: #94a3b8;
+}
+
+.stat-value {
+    font-weight: 600;
+    color: var(--calm-blue);
+}
+
+.difficulty-bars {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.bar {
+    width: 16px;
+    height: 4px;
+    background: #e2e8f0;
+    border-radius: 2px;
+    transition: var(--transition);
+}
+
+.bar.active {
+    background: var(--calm-blue);
+}
+
+body[data-theme="dark"] .bar {
+    background: #374151;
+}
+
+.game-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.game-actions .btn {
+    flex: 1;
+}
+
+.btn-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 2px solid var(--calm-blue);
+    background: transparent;
+    color: var(--calm-blue);
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+}
+
+.btn-icon:hover {
+    background: var(--calm-blue);
+    color: white;
+    transform: scale(1.1);
+}
+
+.btn-icon:focus {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+/* Modal Styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    transition: var(--transition);
+}
+
+.modal.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.modal-content {
+    background: var(--surface-light);
+    border-radius: var(--border-radius-lg);
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow-xl);
+    border: 2px solid var(--calm-blue);
+}
+
+body[data-theme="dark"] .modal-content {
+    background: var(--surface-dark);
+}
+
+body[data-theme="high-contrast"] .modal-content {
+    background: #000000;
+    border: 3px solid #ffffff;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+body[data-theme="dark"] .modal-header {
+    border-color: #374151;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: var(--calm-blue);
+    font-size: 1.5rem;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #64748b;
+    cursor: pointer;
+    transition: var(--transition);
+    padding: 0.5rem;
+    border-radius: 50%;
+}
+
+.modal-close:hover {
+    color: var(--calm-blue);
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.modal-body {
+    padding: 2rem;
+}
+
+.modal-footer {
+    padding: 1.5rem 2rem;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: flex-end;
+}
+
+body[data-theme="dark"] .modal-footer {
+    border-color: #374151;
+}
+
+@media (max-width: 768px) {
+    .games-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .game-card {
+        padding: 1.5rem;
+    }
+    
+    .game-actions {
+        flex-direction: column;
+    }
+    
+    .game-actions .btn {
+        width: 100%;
+    }
+    
+    .modal-content {
+        width: 95%;
+        margin: 1rem;
+    }
+    
+    .modal-body {
+        padding: 1.5rem;
+    }
+}
+</style>
+
+<script>
+const gameInfo = {
+    maze: {
+        title: 'Calm Maze',
+        description: 'Navigate through peaceful mazes designed to promote patience and problem-solving skills.',
+        benefits: [
+            'Develops spatial reasoning and problem-solving abilities',
+            'Promotes patience and persistence',
+            'Provides a calming, meditative experience',
+            'Builds confidence through achievement',
+            'Improves focus and concentration'
+        ],
+        tips: [
+            'Take your time - there\'s no rush',
+            'Use the solution feature if you get stuck',
+            'Try different difficulty levels as you improve',
+            'Focus on the journey, not just the destination'
+        ],
+        accessibility: [
+            'Keyboard navigation with arrow keys or WASD',
+            'High contrast mode support',
+            'Adjustable game speed',
+            'Visual and audio feedback'
+        ]
+    },
+    bubble: {
+        title: 'Calming Bubble Pop',
+        description: 'Pop colorful bubbles in this soothing sensory game designed for relaxation and focus.',
+        benefits: [
+            'Improves hand-eye coordination',
+            'Provides satisfying sensory feedback',
+            'Reduces stress and anxiety',
+            'Enhances visual tracking skills',
+            'Offers immediate positive reinforcement'
+        ],
+        tips: [
+            'Start with easy mode to get comfortable',
+            'Focus on accuracy over speed',
+            'Different colored bubbles give different points',
+            'Take breaks if you feel overwhelmed'
+        ],
+        accessibility: [
+            'Large, easy-to-click targets',
+            'High contrast color options',
+            'Adjustable game speed',
+            'Clear visual and audio feedback'
+        ]
+    },
+    memory: {
+        title: 'Memory Match',
+        description: 'Improve memory and concentration with gentle card matching featuring calming nature imagery.',
+        benefits: [
+            'Strengthens working memory',
+            'Improves pattern recognition',
+            'Enhances concentration skills',
+            'Builds cognitive flexibility',
+            'Provides sense of accomplishment'
+        ],
+        tips: [
+            'Start with fewer cards and work up',
+            'Take time to study the cards before starting',
+            'Use memory techniques like visualization',
+            'Practice regularly for best results'
+        ],
+        accessibility: [
+            'Large, clear card images',
+            'Audio cues for matches',
+            'Adjustable grid sizes',
+            'High contrast mode available'
+        ]
+    },
+    breathing: {
+        title: 'Breathing Garden',
+        description: 'Practice mindful breathing with beautiful nature visuals.',
+        benefits: ['Reduces stress and anxiety', 'Improves focus and concentration', 'Promotes relaxation'],
+        tips: ['Find a quiet space', 'Follow the visual breathing guide', 'Start with shorter sessions'],
+        accessibility: ['Visual breathing cues', 'Adjustable session length', 'Calming nature sounds']
+    },
+    guess: {
+        title: 'Guess the Bowl',
+        description: 'Watch carefully as the bowls shuffle, then find the ball!',
+        benefits: ['Improves visual attention', 'Enhances working memory', 'Develops concentration skills'],
+        tips: ['Focus on the bowl with the ball', 'Track movement carefully', 'Start with easier levels'],
+        accessibility: ['Clear visual contrasts', 'Multiple difficulty levels', 'No time pressure']
+    }
+};
+
+function showGameInfo(gameType) {
+    const info = gameInfo[gameType];
+    const modal = document.getElementById('gameInfoModal');
+    const title = document.getElementById('modalTitle');
+    const body = document.getElementById('modalBody');
+    
+    title.textContent = info.title;
+    
+    body.innerHTML = `
+        <div class="game-info-content">
+            <p class="game-description">${info.description}</p>
+            
+            <div class="info-section">
+                <h4><i class="fas fa-heart"></i> Benefits</h4>
+                <ul>
+                    ${info.benefits.map(benefit => `<li>${benefit}</li>`).join('')}
+                </ul>
+            </div>
+            
+            <div class="info-section">
+                <h4><i class="fas fa-lightbulb"></i> Tips for Success</h4>
+                <ul>
+                    ${info.tips.map(tip => `<li>${tip}</li>`).join('')}
+                </ul>
+            </div>
+            
+            <div class="info-section">
+                <h4><i class="fas fa-universal-access"></i> Accessibility Features</h4>
+                <ul>
+                    ${info.accessibility.map(feature => `<li>${feature}</li>`).join('')}
+                </ul>
+            </div>
+        </div>
+        
+        <style>
+            .game-info-content {
+                line-height: 1.6;
+            }
+            
+            .game-description {
+                font-size: 1.1rem;
+                color: var(--text-light);
+                margin-bottom: 2rem;
+                padding: 1rem;
+                background: rgba(99, 102, 241, 0.05);
+                border-radius: var(--border-radius);
+                border-left: 4px solid var(--calm-blue);
+            }
+            
+            body[data-theme="dark"] .game-description {
+                color: var(--text-dark);
+                background: rgba(99, 102, 241, 0.1);
+            }
+            
+            .info-section {
+                margin-bottom: 2rem;
+            }
+            
+            .info-section h4 {
+                color: var(--calm-blue);
+                margin-bottom: 1rem;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                font-size: 1.2rem;
+            }
+            
+            .info-section ul {
+                list-style: none;
+                padding: 0;
+            }
+            
+            .info-section li {
+                padding: 0.5rem 0;
+                padding-left: 1.5rem;
+                position: relative;
+                color: #64748b;
+            }
+            
+            body[data-theme="dark"] .info-section li {
+                color: #94a3b8;
+            }
+            
+            .info-section li::before {
+                content: '✓';
+                position: absolute;
+                left: 0;
+                color: var(--soft-green);
+                font-weight: bold;
+            }
+        </style>
+    `;
+    
+    modal.classList.remove('hidden');
+}
+
+function hideGameInfo() {
+    document.getElementById('gameInfoModal').classList.add('hidden');
+}
+
+// Close modal when clicking outside
+document.getElementById('gameInfoModal').addEventListener('click', (e) => {
+    if (e.target.id === 'gameInfoModal') {
+        hideGameInfo();
+    }
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        hideGameInfo();
+    }
+});
+</script>
+{% endblock %}

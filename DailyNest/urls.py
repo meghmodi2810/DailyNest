@@ -42,7 +42,13 @@ urlpatterns = [
     path('clear-chat/', views.clear_chat, name='clear_chat'),
     
     # Game URLs
-    path('games/', views.games_dashboard, name='games_dashboard'),
+    path('games/', views.games_hub, name='games_hub'),
+    path('games/dashboard/', views.games_hub, name='games_dashboard'),  # Redirect old dashboard to new hub
+    path('games/calm-maze/', views.calm_maze, name='calm_maze'),
+    path('games/bubble-pop/', views.bubble_pop, name='bubble_pop'),
+    path('games/memory-match/', views.memory_match, name='memory_match'),
+    path('games/breathing-garden/', views.breathing_garden, name='breathing_garden'),
+    path('games/guess-the-bowl/', views.guess_the_bowl, name='guess_the_bowl'),
     path('games/<str:game_type>/', views.play_game, name='play_game'),
     path('games/save-result/', views.save_game_result, name='save_game_result'),
     path('games/progress/', views.game_progress, name='game_progress'),

@@ -1,0 +1,1132 @@
+{% extends 'base.html' %}
+
+{% block title %}Calm Maze - DailyNest{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="text-center">
+        <h1 class="text-gradient" style="font-size: 2.5rem; margin-bottom: 1rem;">
+            <i class="fas fa-puzzle-piece"></i> Calm Maze Game
+        </h1>
+        <p style="font-size: 1.2rem; color: var(--text-light); margin-bottom: 2rem;">
+            Navigate through peaceful mazes at your own pace. Focus on the journey, not the destination.
+        </p>
+    </div>
+
+    <div id="ui-container" style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 10px; font-size: 1.2em; color: var(--calm-blue);">
+        <div id="timer-display"></div>
+        <div id="best-time-display"></div>
+    </div>
+
+    <div id="game-layout" style="display: flex; gap: 20px; justify-content: center; align-items: flex-start;">
+        <div id="game-container" style="position: relative; box-shadow: var(--shadow-lg); border-radius: var(--border-radius-lg);">
+            <canvas id="gameCanvas" width="800" height="600" style="border: 2px solid var(--calm-blue); display: block; background-color: #2c2f38; border-radius: var(--border-radius);"></canvas>
+            
+            <div id="start-screen" class="overlay" style="display: flex; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.75); backdrop-filter: blur(5px); color: white; flex-direction: column; justify-content: center; align-items: center; text-align: center; border-radius: var(--border-radius);">
+                <h1 style="font-size: 2.5em; margin-bottom: 10px;">Calm Maze Game</h1>
+                <p style="font-size: 1.2em; margin-bottom: 20px;">Choose your level of patience.</p>
+                <button id="easy-button" class="btn btn-primary" style="margin: 5px;">Easy (10x8) <span class="best-time-text" id="easy-best-time"></span></button>
+                <button id="medium-button" class="btn btn-secondary" style="margin: 5px;">Medium (15x12) <span class="best-time-text" id="medium-best-time"></span></button>
+                <button id="hard-button" class="btn btn-accent" style="margin: 5px;">Hard (20x15) <span class="best-time-text" id="hard-best-time"></span></button>
+                <button id="tips-button" style="padding: 12px 24px; font-size: 1.2em; border: none; border-radius: 5px; background-color: #6a64a8; color: white; cursor: pointer; transition: background-color 0.3s ease; margin-top: 20px;">Game Tips</button>
+            </div>
+
+            <div id="tips-screen" class="overlay" style="display: none;">
+                <h1>Game Tips</h1>
+                <p>The goal is to stay calm, not to rush.</p>
+                <p>Use the **arrow keys** or **WASD** to move. The ball moves slowly and smoothly.</p>
+                <p>There are no timers or scores to worry about unless you want to beat your personal best!</p>
+                <button id="close-tips-button" style="padding: 12px 24px; font-size: 1.2em; border: none; border-radius: 5px; background-color: #6a64a8; color: white; cursor: pointer; transition: background-color 0.3s ease;">Close</button>
+            </div>
+
+            <div id="end-screen" class="overlay" style="display: none;">
+                <h1 id="end-title">Well done!</h1>
+                <p id="end-message"></p>
+                <button id="restart-button" style="padding: 12px 24px; font-size: 1.2em; border: none; border-radius: 5px; background-color: #6a64a8; color: white; cursor: pointer; transition: background-color 0.3s ease; margin: 5px;">Play Again</button>
+                <button id="back-button" style="padding: 12px 24px; font-size: 1.2em; border: none; border-radius: 5px; background-color: #6a64a8; color: white; cursor: pointer; transition: background-color 0.3s ease; margin: 5px;">Back to Menu</button>
+            </div>
+        </div>
+        
+        <div id="side-panel" style="width: 200px; display: flex; flex-direction: column; justify-content: flex-start; gap: 15px; padding: 10px;">
+            <div class="panel-section" style="background-color: var(--surface-light); border: 2px solid var(--calm-blue); border-radius: var(--border-radius); padding: 15px; text-align: center;">
+                <p>Need help?</p>
+                <button id="show-solution-button" class="btn btn-secondary" style="width: 100%; margin-bottom: 10px;">Show Solution</button>
+                <button id="hide-solution-button" class="btn btn-secondary" style="display: none; width: 100%;">Hide Solution</button>
+            </div>
+            <div class="panel-section" id="current-best-time-panel" style="background-color: var(--surface-light); border: 2px solid var(--calm-blue); border-radius: var(--border-radius); padding: 15px; text-align: center;">
+                <p>Best Time</p>
+                <div id="current-best-time-value">--</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center" style="margin-top: 2rem;">
+        <a href="{% url 'games_hub' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Games
+        </a>
+    </div>
+</div>
+
+<style>
+.overlay {
+    display: flex;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(5px);
+    color: white;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    border-radius: 8px;
+}
+
+.overlay h1 {
+    font-size: 2.5em;
+    margin-bottom: 10px;
+}
+
+.overlay p {
+    font-size: 1.2em;
+    margin-bottom: 20px;
+}
+
+.overlay button:hover {
+    background-color: #8c88c7 !important;
+}
+
+body[data-theme="dark"] .panel-section {
+    background-color: var(--surface-dark);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const startScreen = document.getElementById('start-screen');
+    const endScreen = document.getElementById('end-screen');
+    const tipsScreen = document.getElementById('tips-screen');
+    const endMessage = document.getElementById('end-message');
+    const easyButton = document.getElementById('easy-button');
+    const mediumButton = document.getElementById('medium-button');
+    const hardButton = document.getElementById('hard-button');
+    const tipsButton = document.getElementById('tips-button');
+    const closeTipsButton = document.getElementById('close-tips-button');
+    const restartButton = document.getElementById('restart-button');
+    const backButton = document.getElementById('back-button');
+    const showSolutionButton = document.getElementById('show-solution-button');
+    const hideSolutionButton = document.getElementById('hide-solution-button');
+    const timerDisplay = document.getElementById('timer-display');
+    const bestTimeDisplay = document.getElementById('best-time-display');
+    const easyBestTimeDisplay = document.getElementById('easy-best-time');
+    const mediumBestTimeDisplay = document.getElementById('medium-best-time');
+    const hardBestTimeDisplay = document.getElementById('hard-best-time');
+    const currentBestTimeValue = document.getElementById('current-best-time-value');
+    
+    const CELL_SIZE = 40;
+    let COLS, ROWS, difficulty;
+    let maze = [];
+    let player = {
+        x: 0,
+        y: 0,
+        radius: CELL_SIZE * 0.35,
+        speed: 1.5,
+        dx: 0,
+        dy: 0,
+        color: '#fdfdff',
+    };
+    let exit = {
+        x: 0,
+        y: 0,
+        radius: CELL_SIZE * 0.4,
+        glowColor: 'rgba(255, 255, 255, 0.8)'
+    };
+    let solutionPath = [];
+    let isShowingSolution = false;
+
+    let keys = {};
+    let gameRunning = false;
+    let startTime, endTime, elapsedTime;
+    let animationFrameId;
+
+    class Cell {
+        constructor(col, row) {
+            this.col = col;
+            this.row = row;
+            this.visited = false;
+            this.walls = { top: true, right: true, bottom: true, left: true };
+        }
+    }
+
+    function generateMaze() {
+        maze = Array.from({ length: ROWS }, (_, row) =>
+            Array.from({ length: COLS }, (_, col) => new Cell(col, row))
+        );
+
+        let stack = [];
+        let current = maze[0][0];
+        current.visited = true;
+        stack.push(current);
+
+        while (stack.length > 0) {
+            let next = findUnvisitedNeighbor(current);
+            if (next) {
+                stack.push(current);
+                removeWall(current, next);
+                current = next;
+                current.visited = true;
+            } else {
+                current = stack.pop();
+            }
+        }
+    }
+
+    function findUnvisitedNeighbor(cell) {
+        const neighbors = [];
+        const { col, row } = cell;
+
+        if (row > 0 && !maze[row - 1][col].visited) neighbors.push(maze[row - 1][col]);
+        if (col < COLS - 1 && !maze[row][col + 1].visited) neighbors.push(maze[row][col + 1]);
+        if (row < ROWS - 1 && !maze[row + 1][col].visited) neighbors.push(maze[row + 1][col]);
+        if (col > 0 && !maze[row][col - 1].visited) neighbors.push(maze[row][col - 1]);
+
+        if (neighbors.length > 0) {
+            return neighbors[Math.floor(Math.random() * neighbors.length)];
+        }
+        return undefined;
+    }
+
+    function removeWall(current, next) {
+        const dx = current.col - next.col;
+        if (dx === 1) { current.walls.left = false; next.walls.right = false; }
+        else if (dx === -1) { current.walls.right = false; next.walls.left = false; }
+        
+        const dy = current.row - next.row;
+        if (dy === 1) { current.walls.top = false; next.walls.bottom = false; }
+        else if (dy === -1) { current.walls.bottom = false; next.walls.top = false; }
+    }
+
+    function findSolutionPath() {
+        const startCell = maze[0][0];
+        const endCell = maze[ROWS-1][COLS-1];
+        let queue = [[startCell]];
+        let visited = new Set();
+        visited.add(startCell);
+
+        while (queue.length > 0) {
+            let path = queue.shift();
+            let current = path[path.length - 1];
+
+            if (current === endCell) {
+                return path;
+            }
+
+            const neighbors = [];
+            const { col, row } = current;
+
+            if (!current.walls.top && row > 0) neighbors.push(maze[row - 1][col]);
+            if (!current.walls.right && col < COLS - 1) neighbors.push(maze[row][col + 1]);
+            if (!current.walls.bottom && row < ROWS - 1) neighbors.push(maze[row + 1][col]);
+            if (!current.walls.left && col > 0) neighbors.push(maze[row][col - 1]);
+
+            for (const neighbor of neighbors) {
+                if (!visited.has(neighbor)) {
+                    visited.add(neighbor);
+                    queue.push([...path, neighbor]);
+                }
+            }
+        }
+        return [];
+    }
+
+    function findSolutionFromCurrentPosition() {
+        const currentCellCol = Math.floor(player.x / CELL_SIZE);
+        const currentCellRow = Math.floor(player.y / CELL_SIZE);
+        
+        if (currentCellRow < 0 || currentCellRow >= ROWS || currentCellCol < 0 || currentCellCol >= COLS) {
+            return [];
+        }
+        
+        const startCell = maze[currentCellRow][currentCellCol];
+        const endCell = maze[ROWS-1][COLS-1];
+        let queue = [[startCell]];
+        let visited = new Set();
+        visited.add(startCell);
+
+        while (queue.length > 0) {
+            let path = queue.shift();
+            let current = path[path.length - 1];
+
+            if (current === endCell) {
+                return path;
+            }
+
+            const neighbors = [];
+            const { col, row } = current;
+
+            if (!current.walls.top && row > 0) neighbors.push(maze[row - 1][col]);
+            if (!current.walls.right && col < COLS - 1) neighbors.push(maze[row][col + 1]);
+            if (!current.walls.bottom && row < ROWS - 1) neighbors.push(maze[row + 1][col]);
+            if (!current.walls.left && col > 0) neighbors.push(maze[row][col - 1]);
+
+            for (const neighbor of neighbors) {
+                if (!visited.has(neighbor)) {
+                    visited.add(neighbor);
+                    queue.push([...path, neighbor]);
+                }
+            }
+        }
+        return [];
+    }
+
+    function drawSolution() {
+        if (solutionPath.length === 0) return;
+        
+        ctx.strokeStyle = '#f44336';
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        
+        ctx.moveTo(player.x, player.y);
+        
+        for (const cell of solutionPath) {
+            const centerX = cell.col * CELL_SIZE + CELL_SIZE / 2;
+            const centerY = cell.row * CELL_SIZE + CELL_SIZE / 2;
+            ctx.lineTo(centerX, centerY);
+        }
+        ctx.stroke();
+        
+        for (const cell of solutionPath) {
+            const centerX = cell.col * CELL_SIZE + CELL_SIZE / 2;
+            const centerY = cell.row * CELL_SIZE + CELL_SIZE / 2;
+            
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 5, 0, Math.PI * 2);
+            ctx.fillStyle = '#f44336';
+            ctx.fill();
+        }
+    }
+
+    function drawMaze() {
+        ctx.strokeStyle = '#95a3b3';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let row = 0; row < ROWS; row++) {
+            for (let col = 0; col < COLS; col++) {
+                const cell = maze[row][col];
+                const x = col * CELL_SIZE;
+                const y = row * CELL_SIZE;
+
+                if (cell.walls.top) drawLine(x, y, x + CELL_SIZE, y);
+                if (cell.walls.right) drawLine(x + CELL_SIZE, y, x + CELL_SIZE, y + CELL_SIZE);
+                if (cell.walls.bottom) drawLine(x + CELL_SIZE, y + CELL_SIZE, x, y + CELL_SIZE);
+                if (cell.walls.left) drawLine(x, y + CELL_SIZE, x, y);
+            }
+        }
+        ctx.stroke();
+    }
+    
+    function drawLine(x1, y1, x2, y2) {
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+    }
+
+    function drawPlayer() {
+        const gradient = ctx.createRadialGradient(player.x, player.y, 0, player.x, player.y, player.radius + 5);
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+        gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.3)');
+        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(player.x - player.radius - 5, player.y - player.radius - 5, (player.radius + 5) * 2, (player.radius + 5) * 2);
+
+        ctx.fillStyle = player.color;
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    function drawExit() {
+        ctx.save();
+        ctx.shadowColor = 'rgba(255, 255, 255, ' + (0.5 + Math.sin(Date.now() / 500) * 0.25) + ')';
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.beginPath();
+        ctx.arc(exit.x, exit.y, exit.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    function handleInput() {
+        if (isShowingSolution) return;
+        
+        player.dx = 0;
+        player.dy = 0;
+
+        if (keys['ArrowUp'] || keys['w']) player.dy = -player.speed;
+        if (keys['ArrowDown'] || keys['s']) player.dy = player.speed;
+        if (keys['ArrowLeft'] || keys['a']) player.dx = -player.speed;
+        if (keys['ArrowRight'] || keys['d']) player.dx = player.speed;
+    }
+
+    function update() {
+        if (isShowingSolution) return;
+
+        let nextX = player.x + player.dx;
+        let nextY = player.y + player.dy;
+        
+        if (!checkCollision(nextX, nextY)) {
+            player.x = nextX;
+            player.y = nextY;
+        }
+    }
+
+    function checkCollision(x, y) {
+        const currentCellCol = Math.floor(x / CELL_SIZE);
+        const currentCellRow = Math.floor(y / CELL_SIZE);
+        const cell = maze[currentCellRow]?.[currentCellCol];
+
+        if (!cell) return true;
+
+        let wallHit = false;
+
+        if (cell.walls.top && y - player.radius < cell.row * CELL_SIZE) wallHit = true;
+        if (cell.walls.bottom && y + player.radius > (cell.row + 1) * CELL_SIZE) wallHit = true;
+        if (cell.walls.left && x - player.radius < cell.col * CELL_SIZE) wallHit = true;
+        if (cell.walls.right && x + player.radius > (cell.col + 1) * CELL_SIZE) wallHit = true;
+
+        return wallHit;
+    }
+
+    function checkWin() {
+        const dist = Math.sqrt((player.x - exit.x) ** 2 + (player.y - exit.y) ** 2);
+        if (dist < player.radius + exit.radius) {
+            gameRunning = false;
+            endTime = Date.now();
+            elapsedTime = (endTime - startTime) / 1000;
+            
+            const bestTimeKey = `bestTime_${difficulty}`;
+            const storedBestTime = localStorage.getItem(bestTimeKey);
+
+            let message = `You completed the maze in ${elapsedTime.toFixed(2)} seconds.`;
+            
+            if (storedBestTime === null || elapsedTime < parseFloat(storedBestTime)) {
+                localStorage.setItem(bestTimeKey, elapsedTime);
+                message += `<br>That's a new best time for this level!`;
+                updateAllBestTimeDisplays();
+            } else {
+                message += `<br>Your best time for this level is ${parseFloat(storedBestTime).toFixed(2)} seconds.`;
+            }
+
+            endMessage.innerHTML = message;
+            endScreen.style.display = 'flex';
+            cancelAnimationFrame(animationFrameId);
+        }
+    }
+
+    function updateTimer() {
+        if (gameRunning && !isShowingSolution) {
+            const currentTime = (Date.now() - startTime) / 1000;
+            timerDisplay.textContent = `Time: ${currentTime.toFixed(2)}s`;
+        }
+    }
+
+    function updateAllBestTimeDisplays() {
+        updateBestTimeDisplay();
+        updateCurrentBestTimeDisplay();
+        bestTimeDisplay.textContent = getBestTimeText(difficulty);
+    }
+
+    function updateBestTimeDisplay() {
+        easyBestTimeDisplay.textContent = getBestTimeText('Easy');
+        mediumBestTimeDisplay.textContent = getBestTimeText('Medium');
+        hardBestTimeDisplay.textContent = getBestTimeText('Hard');
+    }
+    
+    function updateCurrentBestTimeDisplay() {
+        const storedTime = localStorage.getItem(`bestTime_${difficulty}`);
+        currentBestTimeValue.textContent = storedTime ? `${parseFloat(storedTime).toFixed(2)}s` : '--';
+    }
+
+    function getBestTimeText(level) {
+        const storedTime = localStorage.getItem(`bestTime_${level}`);
+        return storedTime ? `(Best: ${parseFloat(storedTime).toFixed(2)}s)` : '(Best: --s)';
+    }
+
+    function gameLoop() {
+        if (!gameRunning) return;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        handleInput();
+        update();
+        checkWin();
+
+        drawMaze();
+        if (isShowingSolution) drawSolution();
+        drawExit();
+        drawPlayer();
+        updateTimer();
+
+        animationFrameId = requestAnimationFrame(gameLoop);
+    }
+
+    function setDifficulty(level, cols, rows) {
+        difficulty = level;
+        COLS = cols;
+        ROWS = rows;
+        canvas.width = COLS * CELL_SIZE;
+        canvas.height = ROWS * CELL_SIZE;
+        
+        isShowingSolution = false;
+        showSolutionButton.style.display = 'block';
+        hideSolutionButton.style.display = 'none';
+        startGame();
+    }
+
+    function startGame() {
+        startScreen.style.display = 'none';
+        endScreen.style.display = 'none';
+        tipsScreen.style.display = 'none';
+        gameRunning = true;
+        startTime = Date.now();
+        player.x = CELL_SIZE / 2;
+        player.y = CELL_SIZE / 2;
+        exit.x = (COLS - 1) * CELL_SIZE + CELL_SIZE / 2;
+        exit.y = (ROWS - 1) * CELL_SIZE + CELL_SIZE / 2;
+        player.speed = 1.5;
+
+        generateMaze();
+        solutionPath = findSolutionPath();
+        updateAllBestTimeDisplays();
+        gameLoop();
+    }
+
+    function resetGame() {
+        gameRunning = false;
+        isShowingSolution = false;
+        startScreen.style.display = 'flex';
+        endScreen.style.display = 'none';
+        tipsScreen.style.display = 'none';
+        timerDisplay.textContent = '';
+        bestTimeDisplay.textContent = '';
+        showSolutionButton.style.display = 'none';
+        hideSolutionButton.style.display = 'none';
+        updateAllBestTimeDisplays();
+        cancelAnimationFrame(animationFrameId);
+    }
+
+    easyButton.addEventListener('click', () => setDifficulty('Easy', 10, 8));
+    mediumButton.addEventListener('click', () => setDifficulty('Medium', 15, 12));
+    hardButton.addEventListener('click', () => setDifficulty('Hard', 20, 15));
+    tipsButton.addEventListener('click', () => {
+        startScreen.style.display = 'none';
+        tipsScreen.style.display = 'flex';
+    });
+    closeTipsButton.addEventListener('click', () => {
+        tipsScreen.style.display = 'none';
+        startScreen.style.display = 'flex';
+    });
+    restartButton.addEventListener('click', () => {
+        startGame();
+        endScreen.style.display = 'none';
+    });
+    backButton.addEventListener('click', resetGame);
+    showSolutionButton.addEventListener('click', () => {
+        solutionPath = findSolutionFromCurrentPosition();
+        isShowingSolution = true;
+        showSolutionButton.style.display = 'none';
+        hideSolutionButton.style.display = 'block';
+        timerDisplay.textContent = 'Solution shown - timer paused';
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawMaze();
+        drawSolution();
+        drawExit();
+        drawPlayer();
+    });
+    hideSolutionButton.addEventListener('click', () => {
+        isShowingSolution = false;
+        showSolutionButton.style.display = 'block';
+        hideSolutionButton.style.display = 'none';
+        timerDisplay.textContent = `Time: ${((Date.now() - startTime) / 1000).toFixed(2)}s`;
+        gameRunning = true;
+        gameLoop();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        keys[e.key] = true;
+    });
+
+    document.addEventListener('keyup', (e) => {
+        keys[e.key] = false;
+    });
+
+    resetGame();
+});
+</script>
+                <p>The goal is to stay calm, not to rush.</p>
+                <p>Use the <strong>arrow keys</strong> or <strong>WASD</strong> to move. The ball moves slowly and smoothly.</p>
+                <p>There are no timers or scores to worry about unless you want to beat your personal best!</p>
+                <button id="close-tips-button" class="btn btn-primary">Close</button>
+            </div>
+
+            <div id="end-screen" class="overlay" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(255, 255, 255, 0.95); backdrop-filter: blur(5px); color: var(--text-light); flex-direction: column; justify-content: center; align-items: center; text-align: center; border-radius: var(--border-radius);">
+                <h1 id="end-title" style="color: var(--soft-green);">Well done!</h1>
+                <p id="end-message"></p>
+                <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                    <button id="restart-button" class="btn btn-primary">Play Again</button>
+                    <button id="back-button" class="btn btn-secondary">Back to Menu</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="side-panel" style="width: 200px; display: flex; flex-direction: column; justify-content: flex-start; gap: 15px; padding: 10px;">
+            <div class="panel-section card" style="padding: 15px; text-align: center;">
+                <p style="margin-bottom: 1rem; color: var(--calm-blue); font-weight: 600;">Need help?</p>
+                <button id="show-solution-button" class="btn" style="width: 100%; background: var(--warm-orange); color: white; margin-bottom: 10px;">
+                    <i class="fas fa-route"></i> Show Solution
+                </button>
+                <button id="hide-solution-button" class="btn" style="display: none; width: 100%; background: var(--soothing-teal); color: white;">
+                    <i class="fas fa-eye-slash"></i> Hide Solution
+                </button>
+            </div>
+            <div class="panel-section card" id="current-best-time-panel" style="padding: 15px; text-align: center;">
+                <p style="margin-bottom: 0.5rem; color: var(--calm-blue); font-weight: 600;">Best Time</p>
+                <div id="current-best-time-value" style="font-size: 1.2rem; font-weight: bold; color: var(--soft-green);">--</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center" style="margin-top: 2rem;">
+        <a href="{% url 'games_hub' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Games
+        </a>
+    </div>
+</div>
+
+<style>
+body[data-theme="dark"] #gameCanvas {
+    background-color: var(--surface-dark);
+    border-color: var(--calm-blue);
+}
+
+body[data-theme="dark"] .overlay {
+    background-color: rgba(30, 41, 59, 0.95) !important;
+    color: var(--text-dark) !important;
+}
+
+body[data-theme="high-contrast"] #gameCanvas {
+    background-color: #000000;
+    border: 3px solid #ffffff;
+}
+
+body[data-theme="high-contrast"] .overlay {
+    background-color: rgba(0, 0, 0, 0.95) !important;
+    color: #ffffff !important;
+    border: 2px solid #ffffff;
+}
+
+@media (max-width: 768px) {
+    #game-layout {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    #side-panel {
+        width: 100%;
+        flex-direction: row;
+        justify-content: center;
+        margin-top: 1rem;
+    }
+    
+    #gameCanvas {
+        width: 100%;
+        max-width: 400px;
+        height: 300px;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const startScreen = document.getElementById('start-screen');
+    const endScreen = document.getElementById('end-screen');
+    const tipsScreen = document.getElementById('tips-screen');
+    const endMessage = document.getElementById('end-message');
+    const easyButton = document.getElementById('easy-button');
+    const mediumButton = document.getElementById('medium-button');
+    const hardButton = document.getElementById('hard-button');
+    const tipsButton = document.getElementById('tips-button');
+    const closeTipsButton = document.getElementById('close-tips-button');
+    const restartButton = document.getElementById('restart-button');
+    const backButton = document.getElementById('back-button');
+    const showSolutionButton = document.getElementById('show-solution-button');
+    const hideSolutionButton = document.getElementById('hide-solution-button');
+    const timerDisplay = document.getElementById('timer-display');
+    const bestTimeDisplay = document.getElementById('best-time-display');
+    const easyBestTimeDisplay = document.getElementById('easy-best-time');
+    const mediumBestTimeDisplay = document.getElementById('medium-best-time');
+    const hardBestTimeDisplay = document.getElementById('hard-best-time');
+    const currentBestTimeValue = document.getElementById('current-best-time-value');
+    
+    const CELL_SIZE = 40;
+    let COLS, ROWS, difficulty;
+    let maze = [];
+    let player = {
+        x: 0,
+        y: 0,
+        radius: CELL_SIZE * 0.35,
+        speed: 1.5,
+        dx: 0,
+        dy: 0,
+        color: '#6366f1',
+    };
+    let exit = {
+        x: 0,
+        y: 0,
+        radius: CELL_SIZE * 0.4,
+        glowColor: 'rgba(16, 185, 129, 0.8)'
+    };
+    let solutionPath = [];
+    let isShowingSolution = false;
+
+    let keys = {};
+    let gameRunning = false;
+    let startTime, endTime, elapsedTime;
+    let animationFrameId;
+
+    class Cell {
+        constructor(col, row) {
+            this.col = col;
+            this.row = row;
+            this.visited = false;
+            this.walls = { top: true, right: true, bottom: true, left: true };
+        }
+    }
+
+    function generateMaze() {
+        maze = Array.from({ length: ROWS }, (_, row) =>
+            Array.from({ length: COLS }, (_, col) => new Cell(col, row))
+        );
+
+        let stack = [];
+        let current = maze[0][0];
+        current.visited = true;
+        stack.push(current);
+
+        while (stack.length > 0) {
+            let next = findUnvisitedNeighbor(current);
+            if (next) {
+                stack.push(current);
+                removeWall(current, next);
+                current = next;
+                current.visited = true;
+            } else {
+                current = stack.pop();
+            }
+        }
+    }
+
+    function findUnvisitedNeighbor(cell) {
+        const neighbors = [];
+        const { col, row } = cell;
+
+        if (row > 0 && !maze[row - 1][col].visited) neighbors.push(maze[row - 1][col]);
+        if (col < COLS - 1 && !maze[row][col + 1].visited) neighbors.push(maze[row][col + 1]);
+        if (row < ROWS - 1 && !maze[row + 1][col].visited) neighbors.push(maze[row + 1][col]);
+        if (col > 0 && !maze[row][col - 1].visited) neighbors.push(maze[row][col - 1]);
+
+        if (neighbors.length > 0) {
+            return neighbors[Math.floor(Math.random() * neighbors.length)];
+        }
+        return undefined;
+    }
+
+    function removeWall(current, next) {
+        const dx = current.col - next.col;
+        if (dx === 1) { current.walls.left = false; next.walls.right = false; }
+        else if (dx === -1) { current.walls.right = false; next.walls.left = false; }
+        
+        const dy = current.row - next.row;
+        if (dy === 1) { current.walls.top = false; next.walls.bottom = false; }
+        else if (dy === -1) { current.walls.bottom = false; next.walls.top = false; }
+    }
+
+    function findSolutionPath() {
+        const startCell = maze[0][0];
+        const endCell = maze[ROWS-1][COLS-1];
+        let queue = [[startCell]];
+        let visited = new Set();
+        visited.add(startCell);
+
+        while (queue.length > 0) {
+            let path = queue.shift();
+            let current = path[path.length - 1];
+
+            if (current === endCell) {
+                return path;
+            }
+
+            const neighbors = [];
+            const { col, row } = current;
+
+            if (!current.walls.top && row > 0) neighbors.push(maze[row - 1][col]);
+            if (!current.walls.right && col < COLS - 1) neighbors.push(maze[row][col + 1]);
+            if (!current.walls.bottom && row < ROWS - 1) neighbors.push(maze[row + 1][col]);
+            if (!current.walls.left && col > 0) neighbors.push(maze[row][col - 1]);
+
+            for (const neighbor of neighbors) {
+                if (!visited.has(neighbor)) {
+                    visited.add(neighbor);
+                    queue.push([...path, neighbor]);
+                }
+            }
+        }
+        return [];
+    }
+
+    function findSolutionFromCurrentPosition() {
+        const currentCellCol = Math.floor(player.x / CELL_SIZE);
+        const currentCellRow = Math.floor(player.y / CELL_SIZE);
+        
+        if (currentCellRow < 0 || currentCellRow >= ROWS || currentCellCol < 0 || currentCellCol >= COLS) {
+            return [];
+        }
+        
+        const startCell = maze[currentCellRow][currentCellCol];
+        const endCell = maze[ROWS-1][COLS-1];
+        let queue = [[startCell]];
+        let visited = new Set();
+        visited.add(startCell);
+
+        while (queue.length > 0) {
+            let path = queue.shift();
+            let current = path[path.length - 1];
+
+            if (current === endCell) {
+                return path;
+            }
+
+            const neighbors = [];
+            const { col, row } = current;
+
+            if (!current.walls.top && row > 0) neighbors.push(maze[row - 1][col]);
+            if (!current.walls.right && col < COLS - 1) neighbors.push(maze[row][col + 1]);
+            if (!current.walls.bottom && row < ROWS - 1) neighbors.push(maze[row + 1][col]);
+            if (!current.walls.left && col > 0) neighbors.push(maze[row][col - 1]);
+
+            for (const neighbor of neighbors) {
+                if (!visited.has(neighbor)) {
+                    visited.add(neighbor);
+                    queue.push([...path, neighbor]);
+                }
+            }
+        }
+        return [];
+    }
+
+    function drawSolution() {
+        if (solutionPath.length === 0) return;
+        
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        
+        ctx.moveTo(player.x, player.y);
+        
+        for (const cell of solutionPath) {
+            const centerX = cell.col * CELL_SIZE + CELL_SIZE / 2;
+            const centerY = cell.row * CELL_SIZE + CELL_SIZE / 2;
+            ctx.lineTo(centerX, centerY);
+        }
+        ctx.stroke();
+        
+        for (const cell of solutionPath) {
+            const centerX = cell.col * CELL_SIZE + CELL_SIZE / 2;
+            const centerY = cell.row * CELL_SIZE + CELL_SIZE / 2;
+            
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 5, 0, Math.PI * 2);
+            ctx.fillStyle = '#f59e0b';
+            ctx.fill();
+        }
+    }
+
+    function drawMaze() {
+        // Get current theme
+        const theme = document.body.dataset.theme;
+        let wallColor = '#6b7280';
+        
+        if (theme === 'dark') {
+            wallColor = '#9ca3af';
+        } else if (theme === 'high-contrast') {
+            wallColor = '#ffffff';
+        }
+        
+        ctx.strokeStyle = wallColor;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let row = 0; row < ROWS; row++) {
+            for (let col = 0; col < COLS; col++) {
+                const cell = maze[row][col];
+                const x = col * CELL_SIZE;
+                const y = row * CELL_SIZE;
+
+                if (cell.walls.top) drawLine(x, y, x + CELL_SIZE, y);
+                if (cell.walls.right) drawLine(x + CELL_SIZE, y, x + CELL_SIZE, y + CELL_SIZE);
+                if (cell.walls.bottom) drawLine(x + CELL_SIZE, y + CELL_SIZE, x, y + CELL_SIZE);
+                if (cell.walls.left) drawLine(x, y + CELL_SIZE, x, y);
+            }
+        }
+        ctx.stroke();
+    }
+    
+    function drawLine(x1, y1, x2, y2) {
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+    }
+
+    function drawPlayer() {
+        const gradient = ctx.createRadialGradient(player.x, player.y, 0, player.x, player.y, player.radius + 5);
+        gradient.addColorStop(0, 'rgba(99, 102, 241, 0.8)');
+        gradient.addColorStop(0.5, 'rgba(99, 102, 241, 0.3)');
+        gradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(player.x - player.radius - 5, player.y - player.radius - 5, (player.radius + 5) * 2, (player.radius + 5) * 2);
+
+        ctx.fillStyle = player.color;
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    function drawExit() {
+        ctx.save();
+        ctx.shadowColor = 'rgba(16, 185, 129, ' + (0.5 + Math.sin(Date.now() / 500) * 0.25) + ')';
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = 'rgba(16, 185, 129, 0.8)';
+        ctx.beginPath();
+        ctx.arc(exit.x, exit.y, exit.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    function handleInput() {
+        if (isShowingSolution) return;
+        
+        player.dx = 0;
+        player.dy = 0;
+
+        if (keys['ArrowUp'] || keys['w']) player.dy = -player.speed;
+        if (keys['ArrowDown'] || keys['s']) player.dy = player.speed;
+        if (keys['ArrowLeft'] || keys['a']) player.dx = -player.speed;
+        if (keys['ArrowRight'] || keys['d']) player.dx = player.speed;
+    }
+
+    function update() {
+        if (isShowingSolution) return;
+
+        let nextX = player.x + player.dx;
+        let nextY = player.y + player.dy;
+        
+        if (!checkCollision(nextX, nextY)) {
+            player.x = nextX;
+            player.y = nextY;
+        }
+    }
+
+    function checkCollision(x, y) {
+        const currentCellCol = Math.floor(x / CELL_SIZE);
+        const currentCellRow = Math.floor(y / CELL_SIZE);
+        const cell = maze[currentCellRow]?.[currentCellCol];
+
+        if (!cell) return true;
+
+        let wallHit = false;
+
+        if (cell.walls.top && y - player.radius < cell.row * CELL_SIZE) wallHit = true;
+        if (cell.walls.bottom && y + player.radius > (cell.row + 1) * CELL_SIZE) wallHit = true;
+        if (cell.walls.left && x - player.radius < cell.col * CELL_SIZE) wallHit = true;
+        if (cell.walls.right && x + player.radius > (cell.col + 1) * CELL_SIZE) wallHit = true;
+
+        return wallHit;
+    }
+
+    function checkWin() {
+        const dist = Math.sqrt((player.x - exit.x) ** 2 + (player.y - exit.y) ** 2);
+        if (dist < player.radius + exit.radius) {
+            gameRunning = false;
+            endTime = Date.now();
+            elapsedTime = (endTime - startTime) / 1000;
+            
+            const bestTimeKey = `bestTime_${difficulty}`;
+            const storedBestTime = localStorage.getItem(bestTimeKey);
+
+            let message = `You completed the maze in ${elapsedTime.toFixed(2)} seconds.`;
+            
+            if (storedBestTime === null || elapsedTime < parseFloat(storedBestTime)) {
+                localStorage.setItem(bestTimeKey, elapsedTime);
+                message += `<br>That's a new best time for this level!`;
+                updateAllBestTimeDisplays();
+            } else {
+                message += `<br>Your best time for this level is ${parseFloat(storedBestTime).toFixed(2)} seconds.`;
+            }
+
+            endMessage.innerHTML = message;
+            endScreen.style.display = 'flex';
+            cancelAnimationFrame(animationFrameId);
+        }
+    }
+
+    function updateTimer() {
+        if (gameRunning && !isShowingSolution) {
+            const currentTime = (Date.now() - startTime) / 1000;
+            timerDisplay.textContent = `Time: ${currentTime.toFixed(2)}s`;
+        }
+    }
+
+    function updateAllBestTimeDisplays() {
+        updateBestTimeDisplay();
+        updateCurrentBestTimeDisplay();
+        bestTimeDisplay.textContent = getBestTimeText(difficulty);
+    }
+
+    function updateBestTimeDisplay() {
+        easyBestTimeDisplay.textContent = getBestTimeText('Easy');
+        mediumBestTimeDisplay.textContent = getBestTimeText('Medium');
+        hardBestTimeDisplay.textContent = getBestTimeText('Hard');
+    }
+    
+    function updateCurrentBestTimeDisplay() {
+        const storedTime = localStorage.getItem(`bestTime_${difficulty}`);
+        currentBestTimeValue.textContent = storedTime ? `${parseFloat(storedTime).toFixed(2)}s` : '--';
+    }
+
+    function getBestTimeText(level) {
+        const storedTime = localStorage.getItem(`bestTime_${level}`);
+        return storedTime ? `(Best: ${parseFloat(storedTime).toFixed(2)}s)` : '(Best: --s)';
+    }
+
+    function gameLoop() {
+        if (!gameRunning) return;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        handleInput();
+        update();
+        checkWin();
+
+        drawMaze();
+        if (isShowingSolution) drawSolution();
+        drawExit();
+        drawPlayer();
+        updateTimer();
+
+        animationFrameId = requestAnimationFrame(gameLoop);
+    }
+
+    function setDifficulty(level, cols, rows) {
+        difficulty = level;
+        COLS = cols;
+        ROWS = rows;
+        canvas.width = COLS * CELL_SIZE;
+        canvas.height = ROWS * CELL_SIZE;
+        
+        isShowingSolution = false;
+        showSolutionButton.style.display = 'block';
+        hideSolutionButton.style.display = 'none';
+        startGame();
+    }
+
+    function startGame() {
+        startScreen.style.display = 'none';
+        endScreen.style.display = 'none';
+        tipsScreen.style.display = 'none';
+        gameRunning = true;
+        startTime = Date.now();
+        player.x = CELL_SIZE / 2;
+        player.y = CELL_SIZE / 2;
+        exit.x = (COLS - 1) * CELL_SIZE + CELL_SIZE / 2;
+        exit.y = (ROWS - 1) * CELL_SIZE + CELL_SIZE / 2;
+        player.speed = 1.5;
+
+        generateMaze();
+        solutionPath = findSolutionPath();
+        updateAllBestTimeDisplays();
+        gameLoop();
+    }
+
+    function resetGame() {
+        gameRunning = false;
+        isShowingSolution = false;
+        startScreen.style.display = 'flex';
+        endScreen.style.display = 'none';
+        tipsScreen.style.display = 'none';
+        timerDisplay.textContent = '';
+        bestTimeDisplay.textContent = '';
+        showSolutionButton.style.display = 'none';
+        hideSolutionButton.style.display = 'none';
+        updateAllBestTimeDisplays();
+        cancelAnimationFrame(animationFrameId);
+    }
+
+    // Event Listeners
+    easyButton.addEventListener('click', () => setDifficulty('Easy', 10, 8));
+    mediumButton.addEventListener('click', () => setDifficulty('Medium', 15, 12));
+    hardButton.addEventListener('click', () => setDifficulty('Hard', 20, 15));
+    tipsButton.addEventListener('click', () => {
+        startScreen.style.display = 'none';
+        tipsScreen.style.display = 'flex';
+    });
+    closeTipsButton.addEventListener('click', () => {
+        tipsScreen.style.display = 'none';
+        startScreen.style.display = 'flex';
+    });
+    restartButton.addEventListener('click', () => {
+        startGame();
+        endScreen.style.display = 'none';
+    });
+    backButton.addEventListener('click', resetGame);
+    showSolutionButton.addEventListener('click', () => {
+        solutionPath = findSolutionFromCurrentPosition();
+        isShowingSolution = true;
+        showSolutionButton.style.display = 'none';
+        hideSolutionButton.style.display = 'block';
+        timerDisplay.textContent = 'Solution shown - timer paused';
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawMaze();
+        drawSolution();
+        drawExit();
+        drawPlayer();
+    });
+    hideSolutionButton.addEventListener('click', () => {
+        isShowingSolution = false;
+        showSolutionButton.style.display = 'block';
+        hideSolutionButton.style.display = 'none';
+        timerDisplay.textContent = `Time: ${((Date.now() - startTime) / 1000).toFixed(2)}s`;
+        gameRunning = true;
+        gameLoop();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        keys[e.key] = true;
+    });
+
+    document.addEventListener('keyup', (e) => {
+        keys[e.key] = false;
+    });
+
+    // Initialize
+    resetGame();
+});
+</script>
+{% endblock %}

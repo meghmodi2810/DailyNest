@@ -18,6 +18,7 @@ import tempfile
 import os
 import random
 from django.core.mail import send_mail
+from datetime import timedelta
 from django.conf import settings
 from django.utils import timezone
 
@@ -1109,3 +1110,50 @@ def game_progress(request):
     }
     
     return render(request, 'games/game_progress.html', context)
+
+# New Games Views
+@login_required
+def games_hub(request):
+    """Main games hub page with all therapeutic games"""
+    return render(request, 'games/games_hub.html')
+
+@login_required
+def calm_maze(request):
+    """Calm maze game view"""
+    return render(request, 'games/calm_maze.html')
+
+@login_required
+def bubble_pop(request):
+    """Bubble pop game view"""
+    from .models import GameSession
+    
+    # Create or get active session
+    active_session, created = GameSession.objects.get_or_create(
+        user=request.user,
+        game_type='bubble_pop',
+        ended_at__isnull=True,
+        defaults={'started_at': timezone.now()}
+    )
+    
+    context = {
+        'game_type': 'bubble_pop',
+        'game_name': 'Calming Bubble Pop',
+        'session_id': active_session.id,
+    }
+    
+    return render(request, 'games/bubble_pop.html', context)
+
+@login_required
+def memory_match(request):
+    """Memory match game view"""
+    return render(request, 'games/memory_match.html')
+
+@login_required
+def breathing_garden(request):
+    """Breathing garden game view"""
+    return render(request, 'games/breathing_garden.html')
+
+@login_required
+def guess_the_bowl(request):
+    """Guess the bowl game view"""
+    return render(request, 'games/guess_the_bowl.html')
