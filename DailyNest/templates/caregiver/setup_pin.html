@@ -1,0 +1,300 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Setup Caregiver Mode - DailyNest{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --primary-color: #6366f1;
+        --primary-hover: #5b5bd6;
+        --secondary-color: #06b6d4;
+        --accent-color: #8b5cf6;
+        --warm-orange: #f59e0b;
+        --soft-green: #10b981;
+        --gentle-purple: #8b5cf6;
+        --calm-blue: #3b82f6;
+        --soothing-teal: #06b6d4;
+        --surface-light: #ffffff;
+        --surface-dark: #1e293b;
+        --text-light: #1f2937;
+        --text-dark: #f8fafc;
+        --border-radius: 12px;
+        --border-radius-lg: 16px;
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .setup-container {
+        max-width: 500px;
+        margin: 2rem auto;
+        padding: 2rem;
+        background: var(--surface-light);
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow-lg);
+        border: 2px solid rgba(245, 158, 11, 0.1);
+    }
+
+    body[data-theme="dark"] .setup-container {
+        background: var(--surface-dark);
+        border-color: rgba(245, 158, 11, 0.2);
+    }
+
+    .setup-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .setup-icon {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, var(--warm-orange) 0%, #d97706 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem auto;
+        color: white;
+        font-size: 2rem;
+    }
+
+    .setup-title {
+        font-size: 1.8rem;
+        font-weight: 600;
+        color: var(--text-light);
+        margin-bottom: 0.5rem;
+    }
+
+    body[data-theme="dark"] .setup-title {
+        color: var(--text-dark);
+    }
+
+    .setup-description {
+        color: #64748b;
+        font-size: 1rem;
+        line-height: 1.6;
+    }
+
+    body[data-theme="dark"] .setup-description {
+        color: #94a3b8;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: var(--text-light);
+    }
+
+    body[data-theme="dark"] .form-label {
+        color: var(--text-dark);
+    }
+
+    .pin-input {
+        width: 100%;
+        padding: 1rem;
+        border: 2px solid #e2e8f0;
+        border-radius: var(--border-radius);
+        font-size: 1.5rem;
+        text-align: center;
+        letter-spacing: 0.5rem;
+        transition: var(--transition);
+        background: white;
+        font-family: 'Courier New', monospace;
+    }
+
+    body[data-theme="dark"] .pin-input {
+        background: #1e293b;
+        border-color: #374151;
+        color: var(--text-dark);
+    }
+
+    .pin-input:focus {
+        outline: none;
+        border-color: var(--warm-orange);
+        box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+    }
+
+    .btn-setup {
+        width: 100%;
+        padding: 0.875rem;
+        background: linear-gradient(135deg, var(--warm-orange) 0%, #d97706 100%);
+        color: white;
+        border: none;
+        border-radius: var(--border-radius);
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .btn-setup:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(245, 158, 11, 0.3);
+    }
+
+    .btn-cancel {
+        width: 100%;
+        padding: 0.75rem;
+        background: transparent;
+        color: #64748b;
+        border: 2px solid #e2e8f0;
+        border-radius: var(--border-radius);
+        font-size: 1rem;
+        cursor: pointer;
+        transition: var(--transition);
+        margin-top: 1rem;
+        text-decoration: none;
+        display: inline-block;
+        text-align: center;
+    }
+
+    body[data-theme="dark"] .btn-cancel {
+        color: #94a3b8;
+        border-color: #374151;
+    }
+
+    .btn-cancel:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+    }
+
+    body[data-theme="dark"] .btn-cancel:hover {
+        background: #374151;
+        border-color: #4b5563;
+    }
+
+    .pin-requirements {
+        background: rgba(245, 158, 11, 0.05);
+        border: 1px solid rgba(245, 158, 11, 0.2);
+        border-radius: var(--border-radius);
+        padding: 1rem;
+        margin-top: 1rem;
+    }
+
+    .pin-requirements h4 {
+        margin: 0 0 0.5rem 0;
+        color: #d97706;
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+
+    .pin-requirements ul {
+        margin: 0;
+        padding-left: 1.25rem;
+        color: #64748b;
+        font-size: 0.85rem;
+    }
+
+    body[data-theme="dark"] .pin-requirements ul {
+        color: #94a3b8;
+    }
+
+    .security-note {
+        background: rgba(59, 130, 246, 0.05);
+        border: 1px solid rgba(59, 130, 246, 0.2);
+        border-radius: var(--border-radius);
+        padding: 1rem;
+        margin-top: 1.5rem;
+        text-align: center;
+    }
+
+    .security-note i {
+        color: var(--calm-blue);
+        margin-right: 0.5rem;
+    }
+
+    .security-note p {
+        margin: 0;
+        color: #64748b;
+        font-size: 0.85rem;
+    }
+
+    body[data-theme="dark"] .security-note p {
+        color: #94a3b8;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="setup-container">
+    <div class="setup-header">
+        <div class="setup-icon">
+            <i class="fas fa-shield-alt"></i>
+        </div>
+        <h1 class="setup-title">Setup Caregiver Mode</h1>
+        <p class="setup-description">
+            Create a secure 6-digit PIN to enable caregiver mode access. This will allow trusted caregivers to view your journals and emotion records.
+        </p>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label for="pin" class="form-label">6-Digit PIN</label>
+            <input type="password" id="pin" name="pin" class="pin-input" maxlength="6" pattern="[0-9]{6}" placeholder="••••••" required>
+        </div>
+
+        <div class="form-group">
+            <label for="confirm_pin" class="form-label">Confirm PIN</label>
+            <input type="password" id="confirm_pin" name="confirm_pin" class="pin-input" maxlength="6" pattern="[0-9]{6}" placeholder="••••••" required>
+        </div>
+
+        <div class="pin-requirements">
+            <h4><i class="fas fa-info-circle"></i> PIN Requirements:</h4>
+            <ul>
+                <li>Must be exactly 6 digits</li>
+                <li>Only numbers (0-9) allowed</li>
+                <li>Should be memorable but not easily guessable</li>
+                <li>Don't use common patterns like 123456 or 000000</li>
+            </ul>
+        </div>
+
+        <button type="submit" class="btn-setup">
+            <i class="fas fa-check"></i> Setup Caregiver Mode
+        </button>
+    </form>
+
+    <a href="{% url 'autistic_dashboard' %}" class="btn-cancel">
+        <i class="fas fa-arrow-left"></i> Back to Dashboard
+    </a>
+
+    <div class="security-note">
+        <i class="fas fa-lock"></i>
+        <p>Your PIN will be securely encrypted and stored. Only you will know the PIN.</p>
+    </div>
+</div>
+
+<script>
+// Auto-format PIN input
+document.addEventListener('DOMContentLoaded', function() {
+    const pinInputs = document.querySelectorAll('.pin-input');
+    
+    pinInputs.forEach(input => {
+        input.addEventListener('input', function(e) {
+            // Only allow digits
+            this.value = this.value.replace(/[^0-9]/g, '');
+            
+            // Limit to 6 digits
+            if (this.value.length > 6) {
+                this.value = this.value.slice(0, 6);
+            }
+        });
+        
+        input.addEventListener('keypress', function(e) {
+            // Only allow digits
+            if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Enter'].includes(e.key)) {
+                e.preventDefault();
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

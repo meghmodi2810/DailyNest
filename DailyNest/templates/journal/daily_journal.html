@@ -677,7 +677,9 @@ document.addEventListener('DOMContentLoaded', function() {
             mediaRecorder = new MediaRecorder(stream);
             
             mediaRecorder.ondataavailable = event => {
-                audioChunks.push(event.data);
+                if (event.data.size > 0) {
+                    audioChunks.push(event.data);
+                }
             };
             
             mediaRecorder.onstop = () => {
@@ -712,7 +714,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         audioChunks = [];
-        mediaRecorder.start();
+        mediaRecorder.start(1000); // Request data every 1000ms to ensure continuous recording
         isRecording = true;
         startTime = Date.now();
         

@@ -25,6 +25,12 @@ urlpatterns = [
     path('manage-relationships/', views.manage_care_relationships, name='manage_care_relationships'),
     path('remove-relationship/<int:relationship_id>/', views.remove_care_relationship, name='remove_care_relationship'),
     
+    # Caregiver Notes URLs
+    path('caregiver/notes/', views.caregiver_notes, name='caregiver_notes'),
+    path('caregiver/notes/add/', views.add_caregiver_note, name='add_caregiver_note'),
+    path('caregiver/notes/edit/<int:note_id>/', views.edit_caregiver_note, name='edit_caregiver_note'),
+    path('caregiver/notes/delete/<int:note_id>/', views.delete_caregiver_note, name='delete_caregiver_note'),
+    
     # Admin Management URLs
     path('admin/manage-users/', views.admin_manage_users, name='admin_manage_users'),
     path('admin/assign-caregiver/<int:autistic_id>/', views.admin_assign_caregiver, name='admin_assign_caregiver'),
@@ -60,4 +66,10 @@ urlpatterns = [
     path('games/<str:game_type>/', views.play_game, name='play_game'),
     path('games/save-result/', views.save_game_result, name='save_game_result'),
     path('games/progress/', views.game_progress, name='game_progress'),
+    
+    # Caregiver Mode URLs
+    path('caregiver-mode/setup/', views.caregiver_mode_setup, name='caregiver_mode_setup'),
+    path('caregiver-mode/login/', views.caregiver_mode_login, name='caregiver_mode_login'),
+    path('caregiver-mode/dashboard/', views.caregiver_mode_dashboard, name='caregiver_mode_dashboard'),
+    path('caregiver-mode/logout/', views.caregiver_mode_logout, name='caregiver_mode_logout'),
 ]

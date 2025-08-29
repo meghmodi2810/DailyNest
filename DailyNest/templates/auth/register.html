@@ -57,31 +57,6 @@
                 {% endif %}
             </div>
 
-            <div class="form-group">
-                <label for="{{ form.role.id_for_label }}" class="form-label">
-                    <i class="fas fa-user-tag"></i>
-                    Role
-                </label>
-                {{ form.role }}
-                <div class="role-descriptions">
-                    <div class="role-desc" data-role="admin">
-                        <strong>Admin:</strong> Full system access and user management
-                    </div>
-                    <div class="role-desc" data-role="caregiver">
-                        <strong>Caregiver:</strong> Monitor and support autistic individuals
-                    </div>
-                    <div class="role-desc" data-role="autistic_person">
-                        <strong>Autistic Person:</strong> Access personal emotion tracking and chat tools
-                    </div>
-                </div>
-                {% if form.role.errors %}
-                    <div class="field-errors">
-                        {% for error in form.role.errors %}
-                            <span class="error-text">{{ error }}</span>
-                        {% endfor %}
-                    </div>
-                {% endif %}
-            </div>
 
             <div class="form-group">
                 <label for="{{ form.password1.id_for_label }}" class="form-label">
@@ -291,43 +266,6 @@
         border-color: #ef4444;
     }
 
-    .role-descriptions {
-        margin-top: 0.75rem;
-        padding: 1rem;
-        background: rgba(245, 158, 11, 0.05);
-        border-radius: var(--border-radius);
-        border: 1px solid rgba(245, 158, 11, 0.1);
-    }
-
-    body[data-theme="dark"] .role-descriptions {
-        background: rgba(245, 158, 11, 0.1);
-        border-color: rgba(245, 158, 11, 0.2);
-    }
-
-    .role-desc {
-        font-size: 0.9rem;
-        margin-bottom: 0.5rem;
-        color: #64748b;
-        display: none;
-    }
-
-    body[data-theme="dark"] .role-desc {
-        color: #94a3b8;
-    }
-
-    body[data-theme="high-contrast"] .role-desc {
-        color: #ffffff;
-    }
-
-    .role-desc:last-child {
-        margin-bottom: 0;
-    }
-
-    .role-desc.active {
-        display: block;
-        color: var(--warm-orange);
-        font-weight: 500;
-    }
 
     .btn-auth {
         width: 100%;
@@ -439,23 +377,4 @@
     }
 </style>
 
-<script>
-    // Show role description based on selection
-    document.addEventListener('DOMContentLoaded', function() {
-        const roleSelect = document.getElementById('id_role');
-        const roleDescs = document.querySelectorAll('.role-desc');
-        
-        function updateRoleDescription() {
-            roleDescs.forEach(desc => desc.classList.remove('active'));
-            const selectedRole = roleSelect.value;
-            const activeDesc = document.querySelector(`[data-role="${selectedRole}"]`);
-            if (activeDesc) {
-                activeDesc.classList.add('active');
-            }
-        }
-        
-        roleSelect.addEventListener('change', updateRoleDescription);
-        updateRoleDescription(); // Initialize
-    });
-</script>
 {% endblock %}

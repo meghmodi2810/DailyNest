@@ -24,13 +24,10 @@ class CustomUserRegistrationForm(UserCreationForm):
     )
     role = forms.ChoiceField(
         choices=[
-            ('caregiver', 'Caregiver'),
             ('autistic_person', 'Autistic Person'),
         ],
-        widget=forms.Select(attrs={
-            'class': 'form-control',
-            'required': True
-        })
+        widget=forms.HiddenInput(),
+        initial='autistic_person'
     )
     caregiver_email = forms.EmailField(
         required=False,
@@ -243,8 +240,7 @@ class ResetPasswordForm(forms.Form):
         return cleaned_data
 
 class ScheduledNoteForm(forms.ModelForm):
-    """Form for creating scheduled notes"""
-    
+    """Form for scheduling notes"""
     class Meta:
         model = ScheduledNote
         fields = ['title', 'content', 'frequency', 'scheduled_time']

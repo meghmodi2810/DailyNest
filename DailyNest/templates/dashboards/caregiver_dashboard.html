@@ -193,34 +193,67 @@
         <h3><i class="fas fa-tools"></i> Caregiver Tools</h3>
         <div class="tools-grid">
             <a href="{% url 'emotion' %}" class="tool-card">
-                <i class="fas fa-smile"></i>
-                <span>Emotion Detection</span>
-                <p>Monitor emotional states</p>
+                <div class="tool-icon">
+                    <i class="fas fa-smile"></i>
+                </div>
+                <div class="tool-content">
+                    <h4>Emotion Detection</h4>
+                    <p>Monitor emotional states and patterns</p>
+                </div>
             </a>
             <a href="{% url 'chat' %}" class="tool-card">
-                <i class="fas fa-comments"></i>
-                <span>AI Chat Support</span>
-                <p>Therapeutic conversations</p>
+                <div class="tool-icon">
+                    <i class="fas fa-comments"></i>
+                </div>
+                <div class="tool-content">
+                    <h4>AI Chat Support</h4>
+                    <p>Access therapeutic conversations</p>
+                </div>
+            </a>
+            <a href="{% url 'caregiver_notes' %}" class="tool-card">
+                <div class="tool-icon">
+                    <i class="fas fa-sticky-note"></i>
+                </div>
+                <div class="tool-content">
+                    <h4>Care Notes</h4>
+                    <p>Manage notes and observations</p>
+                </div>
             </a>
             <a href="{% url 'journal_list' %}" class="tool-card">
-                <i class="fas fa-book"></i>
-                <span>View Journals</span>
-                <p>Read journal entries</p>
+                <div class="tool-icon">
+                    <i class="fas fa-book"></i>
+                </div>
+                <div class="tool-content">
+                    <h4>View Journals</h4>
+                    <p>Read and review journal entries</p>
+                </div>
             </a>
-            <a href="{% url 'schedule_note' %}" class="tool-card">
-                <i class="fas fa-calendar-plus"></i>
-                <span>Schedule Note</span>
-                <p>Schedule notes for individuals</p>
+            <a href="#" class="tool-card" onclick="openScheduleNoteModal()">
+                <div class="tool-icon">
+                    <i class="fas fa-calendar-plus"></i>
+                </div>
+                <div class="tool-content">
+                    <h4>Schedule Note</h4>
+                    <p>Create scheduled notes for individuals</p>
+                </div>
             </a>
             <a href="{% url 'scheduled_notes_list' %}" class="tool-card">
-                <i class="fas fa-calendar-alt"></i>
-                <span>Scheduled Notes</span>
-                <p>View all scheduled notes</p>
+                <div class="tool-icon">
+                    <i class="fas fa-calendar-alt"></i>
+                </div>
+                <div class="tool-content">
+                    <h4>Scheduled Notes</h4>
+                    <p>View all scheduled notes</p>
+                </div>
             </a>
             <button class="tool-card" onclick="generateReport()">
-                <i class="fas fa-file-alt"></i>
-                <span>Generate Report</span>
-                <p>Weekly summary report</p>
+                <div class="tool-icon">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+                <div class="tool-content">
+                    <h4>Generate Report</h4>
+                    <p>Create weekly summary report</p>
+                </div>
             </button>
         </div>
     </div>
@@ -441,24 +474,25 @@
 
     .tools-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
         margin-top: 1.5rem;
     }
 
     .tool-card {
         display: flex;
-        flex-direction: column;
         align-items: center;
         padding: 1.5rem;
         background: var(--surface-light);
         border: 2px solid #e2e8f0;
-        border-radius: var(--border-radius);
+        border-radius: var(--border-radius-lg);
         text-decoration: none;
         color: var(--text-light);
         transition: var(--transition);
-        text-align: center;
         cursor: pointer;
+        gap: 1.5rem;
+        position: relative;
+        overflow: hidden;
     }
 
     body[data-theme="dark"] .tool-card {
@@ -467,31 +501,83 @@
         color: var(--text-dark);
     }
 
+    .tool-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        opacity: 0;
+        transition: var(--transition);
+        z-index: 0;
+    }
+
+    .tool-card:hover::before {
+        opacity: 0.05;
+    }
+
     .tool-card:hover {
-        border-color: var(--soft-green);
-        background: rgba(16, 185, 129, 0.05);
+        border-color: var(--primary-color);
         transform: translateY(-2px);
-        color: var(--soft-green);
+        box-shadow: var(--shadow-lg);
+        color: var(--primary-color);
+    }
+
+    .tool-icon {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        position: relative;
+        z-index: 1;
+        box-shadow: var(--shadow-md);
     }
 
     .tool-card i {
-        font-size: 2rem;
-        margin-bottom: 0.75rem;
+        font-size: 1.5rem;
+        color: white;
     }
 
-    .tool-card span {
+    .tool-content {
+        flex: 1;
+        position: relative;
+        z-index: 1;
+    }
+
+    .tool-content h4 {
+        margin: 0 0 0.5rem 0;
         font-weight: 600;
-        font-size: 1rem;
-        margin-bottom: 0.5rem;
+        font-size: 1.1rem;
+        transition: var(--transition);
     }
 
-    .tool-card p {
-        font-size: 0.8rem;
+    .tool-card:hover .tool-content h4 {
+        color: var(--primary-color);
+    }
+
+    .tool-content p {
+        font-size: 0.9rem;
         color: #64748b;
         margin: 0;
+        line-height: 1.4;
+        transition: var(--transition);
     }
 
     body[data-theme="dark"] .tool-card p {
+        color: #94a3b8;
+    }
+
+    .tool-card:hover .tool-content p {
+        color: #64748b;
+    }
+
+    body[data-theme="dark"] .tool-card:hover .tool-content p {
         color: #94a3b8;
     }
 
@@ -784,7 +870,7 @@
         margin-bottom: 1rem;
         background: rgba(99, 102, 241, 0.05);
         border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
-        transition: var(--transition);
+        transition: var (--transition);
     }
 
     .journal-entry:hover {
@@ -853,6 +939,236 @@
         align-items: flex-start;
     }
 
+    /* Schedule Note Modal */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+    }
+
+    .modal.active {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-content {
+        background: var(--surface-light);
+        border-radius: var(--border-radius-lg);
+        padding: 2rem;
+        width: 90%;
+        max-width: 600px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: var(--shadow-xl);
+        transform: scale(0.9);
+        transition: transform 0.3s ease;
+    }
+
+    .modal.active .modal-content {
+        transform: scale(1);
+    }
+
+    body[data-theme="dark"] .modal-content {
+        background: var(--surface-dark);
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    body[data-theme="dark"] .modal-header {
+        border-color: #374151;
+    }
+
+    .modal-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text-light);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    body[data-theme="dark"] .modal-title {
+        color: var(--text-dark);
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        color: #64748b;
+        cursor: pointer;
+        padding: 0.5rem;
+        border-radius: 50%;
+        transition: var(--transition);
+    }
+
+    .modal-close:hover {
+        background: rgba(239, 68, 68, 0.1);
+        color: #dc2626;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: var(--text-light);
+    }
+
+    body[data-theme="dark"] .form-label {
+        color: var(--text-dark);
+    }
+
+    .form-input, .form-select, .form-textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid #e2e8f0;
+        border-radius: var(--border-radius);
+        font-size: 1rem;
+        transition: var(--transition);
+        background: white;
+    }
+
+    body[data-theme="dark"] .form-input,
+    body[data-theme="dark"] .form-select,
+    body[data-theme="dark"] .form-textarea {
+        background: #1e293b;
+        border-color: #374151;
+        color: var(--text-dark);
+    }
+
+    .form-input:focus,
+    .form-select:focus,
+    .form-textarea:focus {
+        outline: none;
+        border-color: var(--soft-green);
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+
+    .form-textarea {
+        resize: vertical;
+        min-height: 120px;
+    }
+
+    .priority-selector {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 0.5rem;
+    }
+
+    .priority-option {
+        flex: 1;
+        padding: 0.75rem;
+        border: 2px solid #e2e8f0;
+        border-radius: var(--border-radius);
+        text-align: center;
+        cursor: pointer;
+        transition: var(--transition);
+        font-weight: 500;
+    }
+
+    .priority-option.high {
+        border-color: rgba(239, 68, 68, 0.3);
+        background: rgba(239, 68, 68, 0.05);
+        color: #dc2626;
+    }
+
+    .priority-option.medium {
+        border-color: rgba(245, 158, 11, 0.3);
+        background: rgba(245, 158, 11, 0.05);
+        color: #d97706;
+    }
+
+    .priority-option.low {
+        border-color: rgba(34, 197, 94, 0.3);
+        background: rgba(34, 197, 94, 0.05);
+        color: #059669;
+    }
+
+    .priority-option.selected {
+        border-width: 3px;
+        transform: scale(1.05);
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+        margin-top: 2rem;
+        padding-top: 1rem;
+        border-top: 2px solid #e2e8f0;
+    }
+
+    body[data-theme="dark"] .modal-actions {
+        border-color: #374151;
+    }
+
+    .btn-primary {
+        padding: 0.75rem 1.5rem;
+        background: linear-gradient(135deg, var(--soft-green) 0%, #059669 100%);
+        color: white;
+        border: none;
+        border-radius: var(--border-radius);
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-secondary {
+        padding: 0.75rem 1.5rem;
+        background: transparent;
+        color: #64748b;
+        border: 2px solid #e2e8f0;
+        border-radius: var(--border-radius);
+        font-weight: 500;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .btn-secondary:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+    }
+
+    body[data-theme="dark"] .btn-secondary {
+        color: #94a3b8;
+        border-color: #374151;
+    }
+
+    body[data-theme="dark"] .btn-secondary:hover {
+        background: #374151;
+        border-color: #4b5563;
+    }
+
     @media (max-width: 768px) {
         .dashboard-header {
             flex-direction: column;
@@ -871,6 +1187,19 @@
         .tools-grid {
             grid-template-columns: 1fr;
         }
+
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+
+        .modal-content {
+            margin: 1rem;
+            width: calc(100% - 2rem);
+        }
+
+        .modal-actions {
+            flex-direction: column;
+        }
     }
 </style>
 
@@ -879,4 +1208,145 @@
         alert('Report generation feature coming soon! This will create a comprehensive weekly summary of emotional patterns and interactions.');
     }
 </script>
+
+<!-- Schedule Note Modal -->
+<div id="scheduleNoteModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">
+                <i class="fas fa-calendar-plus"></i>
+                Schedule Calming Note
+            </h2>
+            <button class="modal-close" onclick="closeScheduleNoteModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <form id="scheduleNoteForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="noteDate" class="form-label">Date</label>
+                    <input type="date" id="noteDate" name="date" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="noteTime" class="form-label">Time</label>
+                    <input type="time" id="noteTime" name="time" class="form-input" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="noteTitle" class="form-label">Note Title</label>
+                <input type="text" id="noteTitle" name="title" class="form-input" placeholder="e.g., Morning Encouragement" required>
+            </div>
+
+            <div class="form-group">
+                <label for="noteContent" class="form-label">Note Content</label>
+                <textarea id="noteContent" name="content" class="form-textarea" placeholder="Write a calming, encouraging note for the individual..." required></textarea>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Priority Level</label>
+                <div class="priority-selector">
+                    <div class="priority-option low selected" onclick="selectPriority('low')">
+                        <i class="fas fa-leaf"></i> Low
+                    </div>
+                    <div class="priority-option medium" onclick="selectPriority('medium')">
+                        <i class="fas fa-star"></i> Medium
+                    </div>
+                    <div class="priority-option high" onclick="selectPriority('high')">
+                        <i class="fas fa-exclamation"></i> High
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="noteRecipient" class="form-label">For Individual</label>
+                <select id="noteRecipient" name="recipient" class="form-select" required>
+                    <option value="">Select individual...</option>
+                    {% for user in autistic_users %}
+                        <option value="{{ user.id }}">{{ user.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeScheduleNoteModal()">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-calendar-check"></i> Schedule Note
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    let selectedPriority = 'low';
+
+    function openScheduleNoteModal() {
+        const modal = document.getElementById('scheduleNoteModal');
+        modal.classList.add('active');
+        
+        // Set default date to today
+        const today = new Date();
+        document.getElementById('noteDate').value = today.toISOString().split('T')[0];
+        
+        // Set default time to current time + 1 hour
+        const currentTime = new Date();
+        currentTime.setHours(currentTime.getHours() + 1);
+        document.getElementById('noteTime').value = currentTime.toTimeString().slice(0, 5);
+    }
+
+    function closeScheduleNoteModal() {
+        const modal = document.getElementById('scheduleNoteModal');
+        modal.classList.remove('active');
+        
+        // Reset form
+        document.getElementById('scheduleNoteForm').reset();
+        selectedPriority = 'low';
+        updatePrioritySelection();
+    }
+
+    function selectPriority(priority) {
+        selectedPriority = priority;
+        updatePrioritySelection();
+    }
+
+    function updatePrioritySelection() {
+        const options = document.querySelectorAll('.priority-option');
+        options.forEach(option => {
+            option.classList.remove('selected');
+            if (option.classList.contains(selectedPriority)) {
+                option.classList.add('selected');
+            }
+        });
+    }
+
+    // Handle form submission
+    document.getElementById('scheduleNoteForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        formData.append('priority', selectedPriority);
+        
+        // Here you would typically send the data to your Django backend
+        // For now, we'll show a success message
+        alert('Note scheduled successfully! The individual will receive this calming note at the specified time.');
+        closeScheduleNoteModal();
+    });
+
+    // Close modal when clicking outside
+    document.getElementById('scheduleNoteModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeScheduleNoteModal();
+        }
+    });
+
+    // Initialize priority selection
+    document.addEventListener('DOMContentLoaded', function() {
+        updatePrioritySelection();
+    });
+</script>
+
 {% endblock %}

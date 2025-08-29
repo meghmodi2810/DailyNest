@@ -5,10 +5,9 @@ from django.core.validators import RegexValidator
 from django.contrib.auth.hashers import make_password
 
 class CustomUser(AbstractUser):
-    """Custom User model with role-based authentication"""
+    """Custom User model with caregiver mode support"""
     ROLE_CHOICES = [
         ('admin', 'Admin'),
-        ('caregiver', 'Caregiver'),
         ('autistic_person', 'Autistic Person'),
     ]
     
@@ -16,6 +15,10 @@ class CustomUser(AbstractUser):
     email = models.EmailField(unique=True, help_text="Email address for login")
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='autistic_person')
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    # Caregiver mode fields
+    caregiver_pin = models.CharField(max_length=128, blank=True, null=True, help_text="6-digit PIN for caregiver mode access")
+    caregiver_mode_enabled = models.BooleanField(default=False, help_text="Whether caregiver mode is set up")
     
     # Additional profile information
     phone = models.CharField(max_length=20, blank=True, null=True, help_text="Phone number")
@@ -34,6 +37,17 @@ class CustomUser(AbstractUser):
         if not self.username:
             self.username = self.email
         super().save(*args, **kwargs)
+    
+    def set_caregiver_pin(self, pin):
+        """Set the caregiver mode PIN"""
+        self.caregiver_pin = make_password(pin)
+        self.caregiver_mode_enabled = True
+        self.save()
+    
+    def check_caregiver_pin(self, pin):
+        """Check if the provided PIN matches the caregiver PIN"""
+        from django.contrib.auth.hashers import check_password
+        return check_password(pin, self.caregiver_pin)
     
     def __str__(self):
         return f"{self.name} ({self.get_role_display()})"
@@ -256,14 +270,14 @@ class CareNote(models.Model):
     ]
     
     caregiver = models.ForeignKey(
-        'CustomUser',
-        on_delete=models.CASCADE,
+        'CustomUser', 
+        on_delete=models.CASCADE, 
         related_name='care_notes_created',
         limit_choices_to={'role': 'caregiver'}
     )
     autistic_person = models.ForeignKey(
-        'CustomUser',
-        on_delete=models.CASCADE,
+        'CustomUser', 
+        on_delete=models.CASCADE, 
         related_name='care_notes_received',
         limit_choices_to={'role': 'autistic_person'}
     )
@@ -287,27 +301,6 @@ class CareNote(models.Model):
     def get_tags_list(self):
         """Return tags as a list"""
         return [tag.strip() for tag in self.tags.split(',') if tag.strip()]
-
-class PasswordResetOTP(models.Model):
-    """Model for password reset OTP verification"""
-    user = models.ForeignKey('CustomUser', on_delete=models.CASCADE, related_name='password_reset_otps')
-    otp_code = models.CharField(max_length=6, help_text="6-digit OTP code")
-    is_used = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    expires_at = models.DateTimeField()
-    
-    class Meta:
-        ordering = ['-created_at']
-        verbose_name = 'Password Reset OTP'
-        verbose_name_plural = 'Password Reset OTPs'
-    
-    def __str__(self):
-        return f"OTP for {self.user.email} - {self.otp_code}"
-    
-    def is_expired(self):
-        """Check if OTP is expired"""
-        from django.utils import timezone
-        return timezone.now() > self.expires_at
 
 class ScheduledNote(models.Model):
     """Model for scheduled notes for autistic persons"""
@@ -353,6 +346,27 @@ class ScheduledNote(models.Model):
     
     def __str__(self):
         return f"Scheduled: {self.title} for {self.autistic_person.name}"
+
+class PasswordResetOTP(models.Model):
+    """Model for password reset OTP verification"""
+    user = models.ForeignKey('CustomUser', on_delete=models.CASCADE, related_name='password_reset_otps')
+    otp_code = models.CharField(max_length=6, help_text="6-digit OTP code")
+    is_used = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Password Reset OTP'
+        verbose_name_plural = 'Password Reset OTPs'
+    
+    def __str__(self):
+        return f"OTP for {self.user.email} - {self.otp_code}"
+    
+    def is_expired(self):
+        """Check if OTP is expired"""
+        from django.utils import timezone
+        return timezone.now() > self.expires_at
 
 class JournalEntry(models.Model):
     """Model for daily voice journaling by autistic users"""

@@ -601,8 +601,22 @@ function deleteJournalEntry(journalId) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                // Remove the journal card from the DOM immediately
+                const journalCard = document.querySelector(`[data-journal-id="${journalId}"]`).closest('.journal-card');
+                if (journalCard) {
+                    journalCard.style.transition = 'all 0.3s ease';
+                    journalCard.style.opacity = '0';
+                    journalCard.style.transform = 'translateY(-20px)';
+                    setTimeout(() => {
+                        journalCard.remove();
+                        // Check if there are no more entries and show empty state
+                        const remainingCards = document.querySelectorAll('.journal-card');
+                        if (remainingCards.length === 0) {
+                            location.reload(); // Reload to show empty state
+                        }
+                    }, 300);
+                }
                 alert('Journal entry deleted successfully');
-                location.reload(); // Refresh the page to update the list
             } else {
                 alert('Error: ' + data.message);
             }

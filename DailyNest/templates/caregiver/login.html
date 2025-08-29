@@ -1,0 +1,315 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Caregiver Mode Access - DailyNest{% endblock %}
+
+{% block content %}
+<div class="pin-modal">
+    <div class="pin-container">
+        <div class="pin-header">
+            <div class="pin-icon">
+                <i class="fas fa-shield-alt"></i>
+            </div>
+            <h2>Enter Caregiver PIN</h2>
+            <p>Please enter your 6-digit PIN to access caregiver features.</p>
+        </div>
+
+        <form method="post" class="pin-form">
+            {% csrf_token %}
+            <div class="pin-input-group">
+                <input type="password" name="pin" id="pin" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" required>
+                <div class="pin-dots">
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                </div>
+            </div>
+
+            {% if messages %}
+            <div class="pin-messages">
+                {% for message in messages %}
+                    <div class="pin-message {{ message.tags }}">
+                        <i class="fas fa-exclamation-circle"></i>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="pin-actions">
+                <button type="submit" class="btn-verify">
+                    <i class="fas fa-check-circle"></i>
+                    Verify PIN
+                </button>
+                <a href="{% url 'autistic_dashboard' %}" class="btn-cancel">
+                    <i class="fas fa-times"></i>
+                    Cancel
+                </a>
+            </div>
+        </form>
+
+        <div class="pin-footer">
+            <p><i class="fas fa-lock"></i> Secure Access Mode</p>
+        </div>
+    </div>
+</div>
+
+<style>
+:root {
+    --pin-primary: #f59e0b;
+    --pin-primary-dark: #d97706;
+    --pin-error: #ef4444;
+    --pin-success: #10b981;
+}
+
+.pin-modal {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.1) 100%);
+}
+
+.pin-container {
+    width: 100%;
+    max-width: 400px;
+    background: var(--surface-light);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-lg);
+    padding: 2rem;
+    animation: slideUp 0.3s ease-out;
+}
+
+body[data-theme="dark"] .pin-container {
+    background: var(--surface-dark);
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.pin-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.pin-icon {
+    width: 70px;
+    height: 70px;
+    background: linear-gradient(135deg, var(--pin-primary) 0%, var(--pin-primary-dark) 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+    color: white;
+    font-size: 1.8rem;
+}
+
+.pin-header h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text-light);
+}
+
+body[data-theme="dark"] .pin-header h2 {
+    color: var(--text-dark);
+}
+
+.pin-header p {
+    color: #64748b;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+body[data-theme="dark"] .pin-header p {
+    color: #94a3b8;
+}
+
+.pin-input-group {
+    position: relative;
+    margin-bottom: 2rem;
+}
+
+.pin-input-group input {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.pin-dots {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    transition: all 0.2s ease;
+}
+
+body[data-theme="dark"] .dot {
+    background: #374151;
+}
+
+.dot.filled {
+    background: var(--pin-primary);
+    transform: scale(1.1);
+}
+
+.pin-messages {
+    margin-bottom: 1.5rem;
+}
+
+.pin-message {
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--pin-error);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+.pin-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.btn-verify {
+    width: 100%;
+    padding: 0.875rem;
+    background: linear-gradient(135deg, var(--pin-primary) 0%, var(--pin-primary-dark) 100%);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.btn-verify:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(245, 158, 11, 0.3);
+}
+
+.btn-cancel {
+    width: 100%;
+    padding: 0.875rem;
+    background: transparent;
+    color: #64748b;
+    border: 2px solid #e2e8f0;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+body[data-theme="dark"] .btn-cancel {
+    color: #94a3b8;
+    border-color: #374151;
+}
+
+.btn-cancel:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+body[data-theme="dark"] .btn-cancel:hover {
+    background: #374151;
+    border-color: #4b5563;
+}
+
+.pin-footer {
+    margin-top: 2rem;
+    text-align: center;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e2e8f0;
+}
+
+body[data-theme="dark"] .pin-footer {
+    border-color: #374151;
+}
+
+.pin-footer p {
+    color: #64748b;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+body[data-theme="dark"] .pin-footer p {
+    color: #94a3b8;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const pinInput = document.getElementById('pin');
+    const dots = document.querySelectorAll('.dot');
+    
+    pinInput.addEventListener('input', function(e) {
+        // Only allow numbers
+        this.value = this.value.replace(/[^0-9]/g, '');
+        
+        // Update dots
+        dots.forEach((dot, index) => {
+            if (index < this.value.length) {
+                dot.classList.add('filled');
+            } else {
+                dot.classList.remove('filled');
+            }
+        });
+        
+        // Limit to 6 digits
+        if (this.value.length > 6) {
+            this.value = this.value.slice(0, 6);
+        }
+    });
+    
+    // Focus input on page load
+    pinInput.focus();
+});
+</script>
+{% endblock %}

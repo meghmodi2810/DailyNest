@@ -5,7 +5,8 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from .models import CustomUser, EmotionRecord, CareRelationship, ChatMessage, UserPreference, PasswordResetOTP, JournalEntry
+from django.contrib.auth.hashers import check_password
+from .models import CustomUser, EmotionRecord, CareRelationship, ChatMessage, UserPreference, PasswordResetOTP, JournalEntry, CareNote, ScheduledNote
 from .forms import CustomUserRegistrationForm, CustomLoginForm, CareNoteForm, ForgotPasswordForm, ResetPasswordForm, ScheduledNoteForm, UserPreferenceForm, UserProfileForm
 from .ml_models_fallback import get_emotion_detector, get_speech_processor
 
@@ -21,6 +22,7 @@ from django.core.mail import send_mail
 from datetime import timedelta
 from django.conf import settings
 from django.utils import timezone
+from django.db.models import Case, When, IntegerField
 
 # Optional imports with fallbacks
 try:
@@ -1523,3 +1525,277 @@ def skip_emotion_check(request):
         preference.save()
         return JsonResponse({'success': True})
     return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+# Caregiver Mode Views
+@login_required
+def caregiver_mode_setup(request):
+    """Setup caregiver mode PIN for first-time access"""
+    user = request.user
+    
+    if user.caregiver_mode_enabled:
+        return redirect('caregiver_mode_login')
+    
+    if request.method == 'POST':
+        pin = request.POST.get('pin')
+        confirm_pin = request.POST.get('confirm_pin')
+        
+        if not pin or not confirm_pin:
+            messages.error(request, 'Both PIN fields are required.')
+            return render(request, 'caregiver/setup_pin.html')
+        
+        if pin != confirm_pin:
+            messages.error(request, 'PINs do not match.')
+            return render(request, 'caregiver/setup_pin.html')
+        
+        if len(pin) != 6 or not pin.isdigit():
+            messages.error(request, 'PIN must be exactly 6 digits.')
+            return render(request, 'caregiver/setup_pin.html')
+        
+        # Set caregiver PIN
+        user.set_caregiver_pin(pin)
+        messages.success(request, 'Caregiver mode has been set up successfully!')
+        return redirect('caregiver_mode_dashboard')
+    
+    return render(request, 'caregiver/setup_pin.html')
+
+@login_required
+def caregiver_mode_login(request):
+    """Login to caregiver mode with PIN"""
+    user = request.user
+    
+    if not user.caregiver_mode_enabled:
+        return redirect('caregiver_mode_setup')
+    
+    if request.method == 'POST':
+        pin = request.POST.get('pin')
+        
+        if not pin:
+            messages.error(request, 'PIN is required.')
+            return render(request, 'caregiver/login.html')
+        
+        if user.check_caregiver_pin(pin):
+            # Store caregiver mode session
+            request.session['caregiver_mode'] = True
+            return redirect('caregiver_mode_dashboard')
+        else:
+            messages.error(request, 'Invalid caregiver mode PIN.')
+            return render(request, 'caregiver/login.html')
+    
+    return render(request, 'caregiver/login.html')
+
+@login_required
+def caregiver_mode_dashboard(request):
+    """Caregiver mode dashboard showing journals, emotions, and reports"""
+    # Check if user is in caregiver mode
+    if not request.session.get('caregiver_mode'):
+        return redirect('caregiver_mode_login')
+    
+    user = request.user
+    
+    # Get recent journal entries
+    recent_journals = JournalEntry.objects.filter(user=user).order_by('-created_at')[:10]
+    
+    # Get recent emotion records
+    recent_emotions = EmotionRecord.objects.filter(user=user).order_by('-timestamp')[:10]
+    
+    # Get emotion summary for the last 7 days
+    week_ago = timezone.now() - timedelta(days=7)
+    weekly_emotions = EmotionRecord.objects.filter(
+        user=user, 
+        timestamp__gte=week_ago
+    ).order_by('-timestamp')
+    
+    context = {
+        'user': user,
+        'recent_journals': recent_journals,
+        'recent_emotions': recent_emotions,
+        'weekly_emotions': weekly_emotions,
+        'journal_count': JournalEntry.objects.filter(user=user).count(),
+        'emotion_count': EmotionRecord.objects.filter(user=user).count(),
+    }
+    
+    return render(request, 'caregiver/dashboard.html', context)
+
+@login_required
+def caregiver_mode_logout(request):
+    """Logout from caregiver mode"""
+    if 'caregiver_mode' in request.session:
+        del request.session['caregiver_mode']
+    return redirect('autistic_dashboard')
+
+# Caregiver Notes Views
+@login_required
+def caregiver_notes(request):
+    """View and manage caregiver notes"""
+    if request.user.role != 'caregiver':
+        messages.error(request, 'Access denied. Only caregivers can access notes.')
+        return redirect('dashboard')
+    
+    # Get notes for autistic persons under care
+    care_relationships = CareRelationship.objects.filter(
+        caregiver=request.user,
+        is_active=True
+    ).select_related('autistic_person')
+    autistic_users = [rel.autistic_person for rel in care_relationships]
+    
+    # Get all notes
+    notes = CareNote.objects.filter(
+        autistic_person__in=autistic_users,
+        caregiver=request.user
+    ).order_by('-created_at')
+    
+    # Handle filtering
+    priority_filter = request.GET.get('priority')
+    sort_by = request.GET.get('sort')
+    
+    if priority_filter and priority_filter != 'all':
+        notes = notes.filter(priority=priority_filter)
+    
+    if sort_by:
+        if sort_by == 'date-asc':
+            notes = notes.order_by('created_at')
+        elif sort_by == 'priority':
+            # Custom ordering for priority
+            priority_order = Case(
+                When(priority='high', then=1),
+                When(priority='medium', then=2),
+                When(priority='low', then=3),
+                default=4,
+                output_field=IntegerField(),
+            )
+            notes = notes.annotate(
+                priority_order=priority_order
+            ).order_by('priority_order', '-created_at')
+    
+    return render(request, 'caregiver/notes.html', {
+        'notes': notes,
+        'autistic_users': autistic_users
+    })
+
+@login_required
+def add_caregiver_note(request):
+    """Add a new caregiver note"""
+    if request.user.role != 'caregiver':
+        return JsonResponse({'error': 'Access denied'}, status=403)
+    
+    if request.method == 'POST':
+        try:
+            # Verify autistic person is under care
+            autistic_person_id = request.POST.get('autistic_person')
+            autistic_person = CustomUser.objects.get(
+                id=autistic_person_id,
+                role='autistic_person'
+            )
+            
+            if CareRelationship.objects.filter(
+                caregiver=request.user,
+                autistic_person=autistic_person,
+                is_active=True
+            ).exists():
+                # Create the note
+                note = CareNote.objects.create(
+                    caregiver=request.user,
+                    autistic_person=autistic_person,
+                    title=request.POST.get('title'),
+                    content=request.POST.get('content'),
+                    priority=request.POST.get('priority', 'medium'),
+                    is_private=request.POST.get('is_private', False)
+                )
+                
+                # Handle scheduling if requested
+                if request.POST.get('scheduleNote'):
+                    schedule_date = request.POST.get('schedule_date')
+                    schedule_time = request.POST.get('schedule_time')
+                    if schedule_date and schedule_time:
+                        from datetime import datetime
+                        scheduled_for = datetime.strptime(
+                            f"{schedule_date} {schedule_time}",
+                            "%Y-%m-%d %H:%M"
+                        )
+                        ScheduledNote.objects.create(
+                            caregiver=request.user,
+                            autistic_person=autistic_person,
+                            title=note.title,
+                            content=note.content,
+                            priority=note.priority,
+                            scheduled_for=scheduled_for,
+                            status='pending'
+                        )
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Note added successfully'
+                })
+            else:
+                return JsonResponse({
+                    'error': 'Selected person is not under your care'
+                }, status=403)
+                
+        except CustomUser.DoesNotExist:
+            return JsonResponse({
+                'error': 'Invalid autistic person selected'
+            }, status=400)
+        except Exception as e:
+            return JsonResponse({
+                'error': str(e)
+            }, status=400)
+    
+    return JsonResponse({'error': 'Invalid request'}, status=400)
+
+@login_required
+def edit_caregiver_note(request, note_id):
+    """Edit an existing caregiver note"""
+    if request.user.role != 'caregiver':
+        return JsonResponse({'error': 'Access denied'}, status=403)
+    
+    try:
+        note = CareNote.objects.get(id=note_id, caregiver=request.user)
+        
+        if request.method == 'POST':
+            # Update note
+            note.title = request.POST.get('title', note.title)
+            note.content = request.POST.get('content', note.content)
+            note.priority = request.POST.get('priority', note.priority)
+            note.is_private = request.POST.get('is_private', note.is_private)
+            note.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Note updated successfully'
+            })
+        else:
+            # Return note data for editing
+            return JsonResponse({
+                'success': True,
+                'note': {
+                    'id': note.id,
+                    'title': note.title,
+                    'content': note.content,
+                    'priority': note.priority,
+                    'is_private': note.is_private,
+                    'autistic_person': note.autistic_person.id
+                }
+            })
+            
+    except CareNote.DoesNotExist:
+        return JsonResponse({'error': 'Note not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+@login_required
+def delete_caregiver_note(request, note_id):
+    """Delete a caregiver note"""
+    if request.user.role != 'caregiver':
+        return JsonResponse({'error': 'Access denied'}, status=403)
+    
+    try:
+        note = CareNote.objects.get(id=note_id, caregiver=request.user)
+        note.delete()
+        return JsonResponse({
+            'success': True,
+            'message': 'Note deleted successfully'
+        })
+    except CareNote.DoesNotExist:
+        return JsonResponse({'error': 'Note not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
