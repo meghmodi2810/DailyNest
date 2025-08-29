@@ -106,12 +106,36 @@ class UserPreference(models.Model):
         ('large', 'Large'),
     ]
     
+    EMOTION_CHECK_INTERVALS = [
+        (0, 'Disabled'),
+        (-2, 'Every login'),
+        (3, 'Every 3 hours'),
+        (6, 'Every 6 hours'),
+        (12, 'Every 12 hours'),
+        (24, 'Daily'),
+        (-1, 'Morning only (8-10 AM)'),
+    ]
+    
     user = models.OneToOneField('CustomUser', on_delete=models.CASCADE, related_name='preferences')
     theme = models.CharField(max_length=20, choices=THEME_CHOICES, default='light')
     font_size = models.CharField(max_length=10, choices=FONT_SIZE_CHOICES, default='medium')
     reduce_animations = models.BooleanField(default=True)
     high_contrast_mode = models.BooleanField(default=False)
     text_to_speech = models.BooleanField(default=False)
+    emotion_check_interval = models.IntegerField(
+        choices=EMOTION_CHECK_INTERVALS,
+        default=24,
+        help_text="How often to prompt for emotion check"
+    )
+    last_emotion_check = models.DateTimeField(
+        null=True, 
+        blank=True,
+        help_text="Last time emotion was checked"
+    )
+    skip_emotion_checks = models.BooleanField(
+        default=False,
+        help_text="Skip automatic emotion checks"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

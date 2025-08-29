@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}My Dashboard - DailyNest{% endblock %}
 
@@ -191,6 +192,14 @@
         </div>
     </div>
 </div>
+
+{% if show_emotion_check %}
+    {% include 'emotion_check_popup.html' %}
+    <script src="{% static 'js/emotion_check.js' %}"></script>
+    <script>
+        document.getElementById('emotionCheckPopup').style.display = 'block';
+    </script>
+{% endif %}
 
 <style>
     .dashboard-header {

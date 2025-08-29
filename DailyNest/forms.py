@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import authenticate
-from .models import CustomUser, CareNote, PasswordResetOTP, ScheduledNote, CareRelationship
+from .models import CustomUser, CareNote, PasswordResetOTP, ScheduledNote, CareRelationship, UserPreference
 import uuid
 from datetime import datetime, timedelta
 
@@ -334,3 +334,30 @@ class AdminUserForm(forms.ModelForm):
         if commit:
             user.save()
         return user
+
+class UserPreferenceForm(forms.ModelForm):
+    """Form for updating user preferences including emotion check settings"""
+    class Meta:
+        model = UserPreference
+        fields = [
+            'theme', 'font_size', 'reduce_animations', 'high_contrast_mode', 
+            'text_to_speech', 'emotion_check_interval', 'skip_emotion_checks'
+        ]
+        widgets = {
+            'theme': forms.Select(attrs={'class': 'form-control'}),
+            'font_size': forms.Select(attrs={'class': 'form-control'}),
+            'emotion_check_interval': forms.Select(attrs={'class': 'form-control'}),
+            'reduce_animations': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'high_contrast_mode': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'text_to_speech': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'skip_emotion_checks': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+        labels = {
+            'theme': 'Color Theme',
+            'font_size': 'Font Size',
+            'reduce_animations': 'Reduce Animations (Autism-friendly)',
+            'high_contrast_mode': 'High Contrast Mode',
+            'text_to_speech': 'Text-to-Speech',
+            'emotion_check_interval': 'Emotion Check Frequency',
+            'skip_emotion_checks': 'Disable All Emotion Checks',
+        }

@@ -6,7 +6,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from .models import CustomUser, EmotionRecord, ChatMessage, UserPreference, PasswordResetOTP, ScheduledNote
-from .forms import CustomUserRegistrationForm, CustomLoginForm, UserProfileForm, ForgotPasswordForm, OTPVerificationForm, ResetPasswordForm, ScheduledNoteForm
+from .forms import CustomUserRegistrationForm, CustomLoginForm, CareNoteForm, ForgotPasswordForm, ResetPasswordForm, ScheduledNoteForm, UserPreferenceForm, UserProfileForm
 from .ml_models_fallback import get_emotion_detector, get_speech_processor
 
 # Import enhanced chatbot
@@ -183,16 +183,54 @@ def autistic_dashboard(request):
     recent_emotions = EmotionRecord.objects.filter(user=request.user).order_by('-timestamp')[:5]
     recent_chats = ChatMessage.objects.filter(sender='user').order_by('-timestamp')[:5]
     
-    # Get caregiver information
     caregiver_relationships = CareRelationship.objects.filter(
         autistic_person=request.user,
         is_active=True
     ).select_related('caregiver')
     
+    # Check if emotion check is needed
+    show_emotion_check = False
+    if request.user.is_authenticated:
+        preference = UserPreference.objects.get_or_create(user=request.user)[0]
+        if not preference.skip_emotion_checks:
+            last_check = preference.last_emotion_check
+            interval = preference.emotion_check_interval
+            now = timezone.now()
+            
+            # Check if user just logged in (last login within 5 minutes)
+            user_just_logged_in = False
+            if hasattr(request.user, 'last_login') and request.user.last_login:
+                time_since_login = now - request.user.last_login
+                user_just_logged_in = time_since_login.total_seconds() < 300  # 5 minutes
+            
+            # Skip if disabled
+            if interval == 0:
+                show_emotion_check = False
+            # Every login
+            elif interval == -2:
+                if user_just_logged_in:
+                    show_emotion_check = True
+            # Morning only (8-10 AM)
+            elif interval == -1:
+                current_hour = now.hour
+                if 8 <= current_hour <= 10:
+                    if last_check is None or last_check.date() < now.date():
+                        show_emotion_check = True
+            # Regular intervals
+            elif interval > 0:
+                if last_check is None or (now - last_check) > timedelta(hours=interval):
+                    show_emotion_check = True
+            
+            # Force emotion check on login if no check today (for non-every-login users)
+            if user_just_logged_in and interval != -2:
+                if last_check is None or last_check.date() < now.date():
+                    show_emotion_check = True
+    
     context = {
         'recent_emotions': recent_emotions,
         'recent_chats': recent_chats,
         'caregiver_relationships': caregiver_relationships,
+        'show_emotion_check': show_emotion_check,
     }
     return render(request, 'dashboards/autistic_dashboard.html', context)
 
@@ -302,6 +340,12 @@ def detect_emotion(request):
                 voice_confidence=voice_confidence,
                 notes=f"Face: {face_emotion or 'None'} ({face_confidence:.2f}), Voice: {voice_emotion or 'None'} ({voice_confidence:.2f}), Speech: {speech_text or 'None'}"
             )
+            
+            # Update last emotion check timestamp for authenticated users
+            if request.user.is_authenticated:
+                preference = UserPreference.objects.get_or_create(user=request.user)[0]
+                preference.last_emotion_check = timezone.now()
+                preference.save()
 
             return JsonResponse({
                 'success': True,
@@ -322,6 +366,85 @@ def detect_emotion(request):
             }, status=500)
 
     return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+@csrf_exempt
+def skip_emotion_check(request):
+    if request.method == 'POST' and request.user.is_authenticated:
+        try:
+            preference = UserPreference.objects.get_or_create(user=request.user)[0]
+            preference.last_emotion_check = timezone.now()
+            preference.save()
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    return JsonResponse({'success': False, 'error': 'Invalid request'})
+
+@csrf_exempt
+def get_activity_recommendation(request):
+    """Get activity recommendation based on detected emotion"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            emotion = data.get('emotion', '').lower()
+            
+            recommendations = {
+                'happy': {
+                    'recommendation': 'Great! Try some creative activities to channel your positive energy.',
+                    'activity_url': '/games/calm-maze/'
+                },
+                'sad': {
+                    'recommendation': 'Let\'s try some calming activities to help lift your spirits.',
+                    'activity_url': '/games/breathing-garden/'
+                },
+                'angry': {
+                    'recommendation': 'Some stress-relief activities might help you feel better.',
+                    'activity_url': '/games/bubble-pop/'
+                },
+                'surprised': {
+                    'recommendation': 'Channel that energy into something fun and engaging!',
+                    'activity_url': '/games/'
+                },
+                'fear': {
+                    'recommendation': 'Let\'s try some calming, grounding activities.',
+                    'activity_url': '/games/breathing-garden/'
+                },
+                'neutral': {
+                    'recommendation': 'Perfect time to try something new and engaging!',
+                    'activity_url': '/games/'
+                }
+            }
+            
+            recommendation = recommendations.get(emotion, recommendations['neutral'])
+            
+            return JsonResponse({
+                'success': True,
+                'recommendation': recommendation['recommendation'],
+                'activity_url': recommendation['activity_url']
+            })
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+@login_required
+def emotion_settings(request):
+    """View for managing emotion check preferences"""
+    preference, created = UserPreference.objects.get_or_create(user=request.user)
+    
+    if request.method == 'POST':
+        form = UserPreferenceForm(request.POST, instance=preference)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Your emotion check settings have been updated successfully!')
+            return redirect('emotion_settings')
+    else:
+        form = UserPreferenceForm(instance=preference)
+    
+    return render(request, 'settings/emotion_settings.html', {
+        'form': form,
+        'preference': preference
+    })
 
 @csrf_exempt
 def chat_message(request):
@@ -403,54 +526,21 @@ def chat_message(request):
     
     return JsonResponse({'error': 'Invalid request method'}, status=405)
 
-@csrf_exempt
+@login_required
 def update_preferences(request):
-    """Update user accessibility preferences"""
+    """Update user preferences via AJAX"""
     if request.method == 'POST':
         try:
-            data = json.loads(request.body)
-            
-            # Get or create preferences for the current user (or default user if anonymous)
-            if request.user.is_authenticated:
-                preferences, created = UserPreference.objects.get_or_create(user=request.user)
+            preference, created = UserPreference.objects.get_or_create(user=request.user)
+            form = UserPreferenceForm(request.POST, instance=preference)
+            if form.is_valid():
+                form.save()
+                return JsonResponse({'success': True, 'message': 'Preferences updated successfully'})
             else:
-                # For anonymous users, try to get the first superuser
-                default_user = CustomUser.objects.filter(is_superuser=True).first()
-                if default_user:
-                    preferences, created = UserPreference.objects.get_or_create(user=default_user)
-                else:
-                    return JsonResponse({
-                        'success': False,
-                        'error': 'No user available for preferences'
-                    }, status=400)
-            
-            # Update preferences
-            if 'theme' in data:
-                preferences.theme = data['theme']
-            if 'font_size' in data:
-                preferences.font_size = data['font_size']
-            if 'reduce_animations' in data:
-                preferences.reduce_animations = data['reduce_animations']
-            if 'high_contrast_mode' in data:
-                preferences.high_contrast_mode = data['high_contrast_mode']
-            if 'text_to_speech' in data:
-                preferences.text_to_speech = data['text_to_speech']
-                
-            preferences.save()
-            
-            return JsonResponse({
-                'success': True,
-                'message': 'Preferences updated successfully'
-            })
-            
+                return JsonResponse({'success': False, 'errors': form.errors})
         except Exception as e:
-            logger.error(f"Preferences update error: {str(e)}")
-            return JsonResponse({
-                'success': False,
-                'error': str(e)
-            }, status=500)
-    
-    return JsonResponse({'error': 'Invalid request method'}, status=405)
+            return JsonResponse({'success': False, 'error': str(e)})
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
 def emotion_history(request):
     """Get recent emotion detection history"""
@@ -1157,3 +1247,58 @@ def breathing_garden(request):
 def guess_the_bowl(request):
     """Guess the bowl game view"""
     return render(request, 'games/guess_the_bowl.html')
+
+def get_activity_recommendation(request):
+    """Get activity recommendation based on emotion"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            emotion = data.get('emotion', 'neutral')
+            
+            # Activity recommendations based on emotion
+            recommendations = {
+                'happy': {
+                    'activity_url': '/games/memory-match/',
+                    'recommendation': 'You seem happy! Try our challenging Memory Match game to keep your spirits high!'
+                },
+                'sad': {
+                    'activity_url': '/chat/',
+                    'recommendation': 'Would you like to talk about what\'s bothering you? Our chatbot is here to listen.'
+                },
+                'angry': {
+                    'activity_url': '/games/bubble-pop/',
+                    'recommendation': 'Try our calming Bubble Pop game to help release some tension.'
+                },
+                'surprised': {
+                    'activity_url': '/games/guess-the-bowl/',
+                    'recommendation': 'Channel that surprise energy into our exciting Guess the Bowl game!'
+                },
+                'neutral': {
+                    'activity_url': '/games/breathing-garden/',
+                    'recommendation': 'How about a relaxing session in our Breathing Garden?'
+                }
+            }
+            
+            recommendation = recommendations.get(emotion, recommendations['neutral'])
+            
+            return JsonResponse({
+                'success': True,
+                'activity_url': recommendation['activity_url'],
+                'recommendation': recommendation['recommendation']
+            })
+            
+        except Exception as e:
+            logger.error(f"Recommendation error: {str(e)}")
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+@login_required
+def skip_emotion_check(request):
+    """Handle emotion check skip"""
+    if request.method == 'POST':
+        preference = UserPreference.objects.get_or_create(user=request.user)[0]
+        preference.last_emotion_check = timezone.now()
+        preference.save()
+        return JsonResponse({'success': True})
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
