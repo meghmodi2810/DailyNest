@@ -30,6 +30,15 @@ urlpatterns = [
     path('caregiver/notes/add/', views.add_caregiver_note, name='add_caregiver_note'),
     path('caregiver/notes/edit/<int:note_id>/', views.edit_caregiver_note, name='edit_caregiver_note'),
     path('caregiver/notes/delete/<int:note_id>/', views.delete_caregiver_note, name='delete_caregiver_note'),
+    path('caregiver/notes/schedule/', views.schedule_note_view, name='schedule_note_view'),
+    path('caregiver/notes/scheduled/', views.scheduled_notes_list_view, name='scheduled_notes_list'),
+    
+    # Scheduled Notes URLs
+    path('caregiver/notes/schedule/', views.schedule_note_view, name='schedule_note_view'),
+    path('caregiver/notes/list/', views.scheduled_notes_list_view, name='scheduled_notes_list'),
+    path('caregiver/notes/<int:note_id>/', views.edit_scheduled_note, name='edit_scheduled_note'),
+    path('caregiver/notes/<int:note_id>/complete/', views.complete_scheduled_note, name='complete_scheduled_note'),
+    path('caregiver/notes/<int:note_id>/delete/', views.delete_scheduled_note, name='delete_scheduled_note'),
     
     # Admin Management URLs
     path('admin/manage-users/', views.admin_manage_users, name='admin_manage_users'),

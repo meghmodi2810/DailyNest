@@ -1,0 +1,208 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Schedule Note{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h4 mb-0">Schedule Note</h2>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="scheduleNoteForm">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="autistic_person" class="form-label">Autistic Person</label>
+                            <select name="autistic_person_id" id="autistic_person" class="form-select" required>
+                                <option value="">Select person...</option>
+                                {% for person in autistic_users %}
+                                    <option value="{{ person.id }}">{{ person.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Note Title</label>
+                            {{ form.title }}
+                            {% if form.title.errors %}
+                                <div class="invalid-feedback">{{ form.title.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="content" class="form-label">Note Content</label>
+                            {{ form.content }}
+                            {% if form.content.errors %}
+                                <div class="invalid-feedback">{{ form.content.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="schedule_date" class="form-label">Date</label>
+                                {{ form.schedule_date }}
+                                {% if form.schedule_date.errors %}
+                                    <div class="invalid-feedback">{{ form.schedule_date.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="schedule_time" class="form-label">Time</label>
+                                {{ form.schedule_time }}
+                                {% if form.schedule_time.errors %}
+                                    <div class="invalid-feedback">{{ form.schedule_time.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="priority" class="form-label">Priority</label>
+                            {{ form.priority }}
+                            {% if form.priority.errors %}
+                                <div class="invalid-feedback">{{ form.priority.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="reminder_time" class="form-label">Reminder</label>
+                            {{ form.reminder_time }}
+                            {% if form.reminder_time.errors %}
+                                <div class="invalid-feedback">{{ form.reminder_time.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                {{ form.is_recurring }}
+                                <label class="form-check-label" for="is_recurring">
+                                    Make this note recurring
+                                </label>
+                            </div>
+                            {% if form.is_recurring.errors %}
+                                <div class="invalid-feedback">{{ form.is_recurring.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div id="recurrenceOptions" class="mb-3" style="display: none;">
+                            <label for="recurrence_pattern" class="form-label">Recurrence Pattern</label>
+                            {{ form.recurrence_pattern }}
+                            {% if form.recurrence_pattern.errors %}
+                                <div class="invalid-feedback">{{ form.recurrence_pattern.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Schedule Note</button>
+                            <a href="{% url 'caregiver_dashboard' %}" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const isRecurringCheckbox = document.getElementById('id_is_recurring');
+    const recurrenceOptions = document.getElementById('recurrenceOptions');
+    const recurrencePattern = document.getElementById('id_recurrence_pattern');
+
+    function toggleRecurrenceOptions() {
+        recurrenceOptions.style.display = isRecurringCheckbox.checked ? 'block' : 'none';
+        recurrencePattern.required = isRecurringCheckbox.checked;
+    }
+
+    isRecurringCheckbox.addEventListener('change', toggleRecurrenceOptions);
+    toggleRecurrenceOptions(); // Initial state
+
+    // Form validation
+    const form = document.getElementById('scheduleNoteForm');
+    form.addEventListener('submit', function(e) {
+        if (isRecurringCheckbox.checked && !recurrencePattern.value) {
+            e.preventDefault();
+            alert('Please select a recurrence pattern for recurring notes.');
+            return false;
+        }
+
+        const scheduleDate = document.getElementById('id_schedule_date').value;
+        const scheduleTime = document.getElementById('id_schedule_time').value;
+
+        if (scheduleDate && scheduleTime) {
+            const scheduledDateTime = new Date(scheduleDate + 'T' + scheduleTime);
+            const now = new Date();
+
+            if (scheduledDateTime < now) {
+                e.preventDefault();
+                alert('Scheduled time must be in the future.');
+                return false;
+            }
+        }
+    });
+});
+</script>
+
+<style>
+.form-control, .form-select {
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.invalid-feedback {
+    display: block;
+    color: #dc3545;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.card {
+    border: none;
+    border-radius: 0.5rem;
+}
+
+.card-header {
+    border-top-left-radius: 0.5rem !important;
+    border-top-right-radius: 0.5rem !important;
+}
+
+.btn {
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+}
+
+.btn-primary {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.btn-primary:hover {
+    background-color: #0b5ed7;
+    border-color: #0a58ca;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+
+.btn-secondary:hover {
+    background-color: #5c636a;
+    border-color: #565e64;
+}
+
+@media (max-width: 768px) {
+    .col-md-6 {
+        margin-bottom: 1rem;
+    }
+}
+</style>
+{% endblock %}

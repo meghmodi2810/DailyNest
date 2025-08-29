@@ -1,1374 +1,656 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Caregiver Dashboard - DailyNest{% endblock %}
+{% block title %}Caregiver Dashboard{% endblock %}
 
 {% block content %}
-<div class="caregiver-dashboard">
-    <!-- Modern Dashboard Header -->
-    <div class="dashboard-header">
-        <div class="header-content">
-            <div class="header-icon">
-                <i class="fas fa-user-shield"></i>
-            </div>
-            <div class="header-text">
-                <h1>Caregiver Dashboard</h1>
-                <p>Monitoring {{ user.name }}'s wellbeing and progress</p>
-            </div>
+<div class="dashboard-container">
+    <!-- Welcome Header -->
+    <div class="welcome-header">
+        <div class="welcome-text">
+            <h1>Welcome back, {{ request.user.name }}</h1>
+            <p>Here's an overview of your individuals' activities and progress</p>
         </div>
-        <div class="header-actions">
-            <button class="btn-action" onclick="generateReport()">
-                <i class="fas fa-file-alt"></i>
-                <span>Generate Report</span>
+        <div class="quick-actions">
+            <button onclick="location.href='{% url 'caregiver_notes' %}'" class="btn-primary">
+                <i class="fas fa-sticky-note"></i> Manage Notes
             </button>
-            <a href="{% url 'caregiver_mode_logout' %}" class="btn-exit">
-                <i class="fas fa-sign-out-alt"></i>
-                <span>Exit Mode</span>
-            </a>
+            <button onclick="location.href='{% url 'schedule_note_view' %}'" class="btn-secondary">
+                <i class="fas fa-clock"></i> Schedule Note
+            </button>
         </div>
     </div>
 
-    <!-- Enhanced Stats Overview -->
-    <div class="stats-overview">
-        <div class="stat-card journals">
-            <div class="stat-icon">
-                <i class="fas fa-book"></i>
+    <!-- Individuals Overview -->
+    {% if autistic_users %}
+        <div class="individuals-grid">
+            {% for user in user_journal_stats %}
+            <div class="individual-card">
+                <div class="individual-header">
+                    <div class="individual-info">
+                        <h3>{{ user.user.name }}</h3>
+                        <span class="relationship">{{ user.user.care_relationships_as_autistic.first.get_relationship_type_display }}</span>
+                    </div>
+                    {% if user.weekly_mood_avg %}
+                        <div class="mood-indicator" title="Average mood this week">
+                            {% if user.weekly_mood_avg >= 4 %}
+                                <i class="fas fa-smile text-success"></i>
+                            {% elif user.weekly_mood_avg >= 3 %}
+                                <i class="fas fa-meh text-warning"></i>
+                            {% else %}
+                                <i class="fas fa-frown text-danger"></i>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <span class="stat-label">Journal Entries (Week)</span>
+                        <span class="stat-value">{{ user.weekly_entries }}</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Notes Completed</span>
+                        <span class="stat-value">{{ user.completed_notes|default:"0" }}/{{ user.total_notes|default:"0" }}</span>
+                    </div>
+                </div>
+
+                <div class="recent-activity">
+                    <h4>Recent Journal Entries</h4>
+                    {% if user.recent_entries %}
+                        <ul class="activity-list">
+                            {% for entry in user.recent_entries %}
+                            <li>
+                                <span class="activity-date">{{ entry.created_at|date:"M d" }}</span>
+                                <span class="activity-title">{{ entry.title|default:"Untitled Entry" }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="no-entries">No recent journal entries</p>
+                    {% endif %}
+                </div>
+
+                <div class="scheduled-notes">
+                    <h4>Today's Notes</h4>
+                    {% with today_notes=user.user.scheduled_notes_received.all %}
+                        {% if today_notes %}
+                            <ul class="notes-list">
+                                {% for note in today_notes %}
+                                <li class="note-item {% if note.status == 'completed' %}completed{% endif %}">
+                                    <span class="note-title">{{ note.title }}</span>
+                                    <span class="note-status">{{ note.get_status_display }}</span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p class="no-notes">No notes scheduled for today</p>
+                        {% endif %}
+                    {% endwith %}
+                </div>
+
+                <div class="card-actions">
+                    <button onclick="location.href='{% url 'journal_list' %}?user={{ user.user.id }}'" class="btn-text">
+                        <i class="fas fa-book"></i> View All Journals
+                    </button>
+                    <button onclick="location.href='{% url 'caregiver_notes' %}?person={{ user.user.id }}'" class="btn-text">
+                        <i class="fas fa-sticky-note"></i> Manage Notes
+                    </button>
+                </div>
             </div>
-            <div class="stat-content">
-                <div class="stat-number">{{ journal_count }}</div>
-                <div class="stat-label">Journal Entries</div>
-                <div class="stat-trend">+3 this week</div>
-            </div>
+            {% endfor %}
         </div>
-        
-        <div class="stat-card emotions">
-            <div class="stat-icon">
-                <i class="fas fa-heart"></i>
-            </div>
-            <div class="stat-content">
-                <div class="stat-number">{{ emotion_count }}</div>
-                <div class="stat-label">Emotion Records</div>
-                <div class="stat-trend">+7 today</div>
-            </div>
+    {% else %}
+        <div class="empty-state">
+            <i class="fas fa-user-friends"></i>
+            <h2>No Individuals Assigned</h2>
+            <p>You currently don't have any individuals assigned to your care.</p>
+            <button onclick="location.href='{% url 'manage_care_relationships' %}'" class="btn-primary">
+                Add Individual
+            </button>
         </div>
-        
-        <div class="stat-card wellbeing">
-            <div class="stat-icon">
-                <i class="fas fa-chart-line"></i>
+    {% endif %}
+
+    <!-- Overall Statistics -->
+    <div class="statistics-container">
+        <h2>Overall Statistics</h2>
+        <div class="stats-summary">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-book"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ total_weekly_entries }}</span>
+                    <span class="stat-label">Journal Entries This Week</span>
+                </div>
             </div>
-            <div class="stat-content">
-                <div class="stat-number">8.2</div>
-                <div class="stat-label">Wellbeing Score</div>
-                <div class="stat-trend positive">↑ Improving</div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-tasks"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ total_notes_completed }}/{{ total_notes }}</span>
+                    <span class="stat-label">Notes Completed Today</span>
+                </div>
             </div>
-        </div>
-        
-        <div class="stat-card activities">
-            <div class="stat-icon">
-                <i class="fas fa-gamepad"></i>
-            </div>
-            <div class="stat-content">
-                <div class="stat-number">12</div>
-                <div class="stat-label">Activities</div>
-                <div class="stat-trend">5 games played</div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value">{{ autistic_users|length }}</span>
+                    <span class="stat-label">Individuals Under Care</span>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Main Content Grid -->
-    <div class="main-content">
-        <!-- Activity Timeline -->
-        <div class="content-card timeline-card">
-            <div class="card-header">
-                <div class="card-title">
-                    <i class="fas fa-clock"></i>
-                    <h3>Recent Activity</h3>
-                </div>
-                <button class="btn-filter">
-                    <i class="fas fa-filter"></i>
-                    Filter
-                </button>
-            </div>
-            
-            <div class="timeline">
-                {% if recent_journals %}
-                    {% for journal in recent_journals %}
-                        <div class="timeline-item journal">
-                            <div class="timeline-marker">
-                                <i class="fas fa-book"></i>
-                            </div>
-                            <div class="timeline-content">
-                                <div class="timeline-header">
-                                    <span class="timeline-type">Journal Entry</span>
-                                    <span class="timeline-time">{{ journal.created_at|date:"M d, g:i A" }}</span>
-                                </div>
-                                <div class="timeline-body">
-                                    {% if journal.title %}
-                                        <strong>{{ journal.title }}</strong><br>
-                                    {% endif %}
-                                    {{ journal.content|truncatewords:15|default:"Voice-only entry" }}
-                                </div>
-                                {% if journal.mood_rating %}
-                                    <div class="timeline-mood">
-                                        <span class="mood-emoji">
-                                            {% if journal.mood_rating == 1 %}😢
-                                            {% elif journal.mood_rating == 2 %}😔
-                                            {% elif journal.mood_rating == 3 %}😐
-                                            {% elif journal.mood_rating == 4 %}😊
-                                            {% elif journal.mood_rating == 5 %}😄
-                                            {% endif %}
-                                        </span>
-                                        <span class="mood-text">Mood: {{ journal.mood_rating }}/5</span>
-                                    </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                    {% endfor %}
-                {% endif %}
-                
-                {% if recent_emotions %}
-                    {% for emotion in recent_emotions %}
-                        <div class="timeline-item emotion">
-                            <div class="timeline-marker">
-                                <i class="fas fa-smile"></i>
-                            </div>
-                            <div class="timeline-content">
-                                <div class="timeline-header">
-                                    <span class="timeline-type">Emotion Detection</span>
-                                    <span class="timeline-time">{{ emotion.timestamp|date:"M d, g:i A" }}</span>
-                                </div>
-                                <div class="timeline-body">
-                                    <div class="emotion-tags">
-                                        {% if emotion.face_emotion %}
-                                            <span class="emotion-tag face">
-                                                <i class="fas fa-smile"></i>
-                                                {{ emotion.face_emotion|title }}
-                                            </span>
-                                        {% endif %}
-                                        {% if emotion.voice_emotion %}
-                                            <span class="emotion-tag voice">
-                                                <i class="fas fa-microphone"></i>
-                                                {{ emotion.voice_emotion|title }}
-                                            </span>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    {% endfor %}
-                {% endif %}
-                
-                {% if not recent_journals and not recent_emotions %}
-                    <div class="empty-timeline">
-                        <i class="fas fa-clock"></i>
-                        <p>No recent activity to display</p>
-                    </div>
-                {% endif %}
+    <!-- Recent Activity Feed -->
+    <div class="activity-feed">
+        <div class="feed-header">
+            <h2>Recent Activity</h2>
+            <div class="feed-filters">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="journal">Journals</button>
+                <button class="filter-btn" data-filter="notes">Notes</button>
             </div>
         </div>
 
-        <!-- Quick Actions Panel -->
-        <div class="content-card actions-card">
-            <div class="card-header">
-                <div class="card-title">
-                    <i class="fas fa-bolt"></i>
-                    <h3>Quick Actions</h3>
+        {% if recent_journal_entries %}
+        <div class="feed-content">
+            {% for entry in recent_journal_entries %}
+            <div class="feed-item" data-type="journal">
+                <div class="feed-icon">
+                    <i class="fas fa-book"></i>
+                </div>
+                <div class="feed-details">
+                    <div class="feed-header">
+                        <span class="feed-title">{{ entry.user.name }} wrote a journal entry</span>
+                        <span class="feed-time">{{ entry.created_at|timesince }} ago</span>
+                    </div>
+                    <p class="feed-excerpt">{{ entry.title|default:"Untitled Entry" }}</p>
                 </div>
             </div>
-            
-            <div class="actions-grid">
-                <button class="action-btn primary" onclick="openEmotionCheck()">
-                    <div class="action-icon">
-                        <i class="fas fa-smile"></i>
-                    </div>
-                    <div class="action-text">
-                        <span>Emotion Check</span>
-                        <small>Start detection</small>
-                    </div>
-                </button>
-                
-                <button class="action-btn secondary" onclick="openJournalPrompt()">
-                    <div class="action-icon">
-                        <i class="fas fa-pen"></i>
-                    </div>
-                    <div class="action-text">
-                        <span>Journal Prompt</span>
-                        <small>Encourage writing</small>
-                    </div>
-                </button>
-                
-                <button class="action-btn tertiary" onclick="suggestActivity()">
-                    <div class="action-icon">
-                        <i class="fas fa-lightbulb"></i>
-                    </div>
-                    <div class="action-text">
-                        <span>Suggest Activity</span>
-                        <small>Recommend games</small>
-                    </div>
-                </button>
-                
-                <button class="action-btn quaternary" onclick="scheduleReminder()">
-                    <div class="action-icon">
-                        <i class="fas fa-bell"></i>
-                    </div>
-                    <div class="action-text">
-                        <span>Set Reminder</span>
-                        <small>Schedule check-in</small>
-                    </div>
-                </button>
-            </div>
+            {% endfor %}
         </div>
-
-        <!-- Tools & Resources -->
-        <div class="content-card tools-card">
-            <div class="card-header">
-                <div class="card-title">
-                    <i class="fas fa-tools"></i>
-                    <h3>Caregiver Tools</h3>
-                </div>
-            </div>
-            
-            <div class="tools-grid">
-                <a href="{% url 'emotion' %}" class="tool-item">
-                    <div class="tool-icon emotion">
-                        <i class="fas fa-smile"></i>
-                    </div>
-                    <div class="tool-content">
-                        <h4>Emotion Monitor</h4>
-                        <p>Track emotional patterns</p>
-                    </div>
-                    <div class="tool-arrow">
-                        <i class="fas fa-arrow-right"></i>
-                    </div>
-                </a>
-                
-                <a href="{% url 'chat' %}" class="tool-item">
-                    <div class="tool-icon chat">
-                        <i class="fas fa-comments"></i>
-                    </div>
-                    <div class="tool-content">
-                        <h4>AI Support Chat</h4>
-                        <p>Therapeutic conversations</p>
-                    </div>
-                    <div class="tool-arrow">
-                        <i class="fas fa-arrow-right"></i>
-                    </div>
-                </a>
-                
-                <a href="{% url 'journal_list' %}" class="tool-item">
-                    <div class="tool-icon journal">
-                        <i class="fas fa-book-open"></i>
-                    </div>
-                    <div class="tool-content">
-                        <h4>Journal Review</h4>
-                        <p>Analyze journal entries</p>
-                    </div>
-                    <div class="tool-arrow">
-                        <i class="fas fa-arrow-right"></i>
-                    </div>
-                </a>
-                
-                <a href="{% url 'games_hub' %}" class="tool-item">
-                    <div class="tool-icon games">
-                        <i class="fas fa-gamepad"></i>
-                    </div>
-                    <div class="tool-content">
-                        <h4>Therapeutic Games</h4>
-                        <p>Monitor game progress</p>
-                    </div>
-                    <div class="tool-arrow">
-                        <i class="fas fa-arrow-right"></i>
-                    </div>
-                </a>
-            </div>
+        {% else %}
+        <div class="empty-feed">
+            <p>No recent activity to show</p>
         </div>
+        {% endif %}
     </div>
 </div>
 
 <style>
-    .caregiver-dashboard {
-        max-width: 1400px;
-        margin: 0 auto;
-        padding: 2rem;
-        min-height: 100vh;
+.dashboard-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.welcome-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.welcome-text h1 {
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--text-light);
+    margin-bottom: 0.5rem;
+}
+
+body[data-theme="dark"] .welcome-text h1 {
+    color: var(--text-dark);
+}
+
+.welcome-text p {
+    color: #64748b;
+}
+
+.quick-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.individuals-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.individual-card {
+    background: var(--surface-light);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    border: 1px solid #e2e8f0;
+}
+
+body[data-theme="dark"] .individual-card {
+    background: var(--surface-dark);
+    border-color: #374151;
+}
+
+.individual-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.individual-info h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: var(--text-light);
+}
+
+body[data-theme="dark"] .individual-info h3 {
+    color: var(--text-dark);
+}
+
+.relationship {
+    font-size: 0.875rem;
+    color: #64748b;
+    background: #f1f5f9;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+}
+
+body[data-theme="dark"] .relationship {
+    background: #374151;
+    color: #94a3b8;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-box {
+    background: #f8fafc;
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    text-align: center;
+}
+
+body[data-theme="dark"] .stat-box {
+    background: #1e293b;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: #64748b;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-light);
+}
+
+body[data-theme="dark"] .stat-value {
+    color: var(--text-dark);
+}
+
+.recent-activity,
+.scheduled-notes {
+    margin-bottom: 1.5rem;
+}
+
+.recent-activity h4,
+.scheduled-notes h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--text-light);
+}
+
+body[data-theme="dark"] .recent-activity h4,
+body[data-theme="dark"] .scheduled-notes h4 {
+    color: var(--text-dark);
+}
+
+.activity-list,
+.notes-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.activity-list li,
+.notes-list li {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 0.875rem;
+}
+
+body[data-theme="dark"] .activity-list li,
+body[data-theme="dark"] .notes-list li {
+    border-color: #374151;
+}
+
+.activity-date {
+    color: #64748b;
+}
+
+.note-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.note-item.completed {
+    color: #059669;
+}
+
+.note-status {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 1rem;
+    background: #f1f5f9;
+}
+
+body[data-theme="dark"] .note-status {
+    background: #374151;
+}
+
+.card-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e2e8f0;
+}
+
+body[data-theme="dark"] .card-actions {
+    border-color: #374151;
+}
+
+.btn-text {
+    background: none;
+    border: none;
+    color: #3b82f6;
+    font-size: 0.875rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-text:hover {
+    color: #2563eb;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: var(--surface-light);
+    border-radius: var(--border-radius);
+    border: 1px solid #e2e8f0;
+}
+
+body[data-theme="dark"] .empty-state {
+    background: var(--surface-dark);
+    border-color: #374151;
+}
+
+.empty-state i {
+    font-size: 3rem;
+    color: #64748b;
+    margin-bottom: 1.5rem;
+}
+
+.empty-state h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--text-light);
+}
+
+body[data-theme="dark"] .empty-state h2 {
+    color: var(--text-dark);
+}
+
+.empty-state p {
+    color: #64748b;
+    margin-bottom: 1.5rem;
+}
+
+.statistics-container {
+    margin-bottom: 2rem;
+}
+
+.statistics-container h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    color: var(--text-light);
+}
+
+body[data-theme="dark"] .statistics-container h2 {
+    color: var(--text-dark);
+}
+
+.stats-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.stat-card {
+    background: var(--surface-light);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+body[data-theme="dark"] .stat-card {
+    background: var(--surface-dark);
+    border-color: #374151;
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.stat-info {
+    flex: 1;
+}
+
+.activity-feed {
+    background: var(--surface-light);
+    border-radius: var(--border-radius);
+    border: 1px solid #e2e8f0;
+    padding: 1.5rem;
+}
+
+body[data-theme="dark"] .activity-feed {
+    background: var(--surface-dark);
+    border-color: #374151;
+}
+
+.feed-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.feed-header h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-light);
+}
+
+body[data-theme="dark"] .feed-header h2 {
+    color: var(--text-dark);
+}
+
+.feed-filters {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.filter-btn {
+    padding: 0.5rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: var(--border-radius);
+    background: none;
+    color: #64748b;
+    cursor: pointer;
+    font-size: 0.875rem;
+}
+
+body[data-theme="dark"] .filter-btn {
+    border-color: #374151;
+    color: #94a3b8;
+}
+
+.filter-btn.active {
+    background: #3b82f6;
+    color: white;
+    border-color: #3b82f6;
+}
+
+.feed-item {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+body[data-theme="dark"] .feed-item {
+    border-color: #374151;
+}
+
+.feed-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.feed-details {
+    flex: 1;
+}
+
+.feed-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.feed-title {
+    font-weight: 500;
+    color: var(--text-light);
+}
+
+body[data-theme="dark"] .feed-title {
+    color: var(--text-dark);
+}
+
+.feed-time {
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.feed-excerpt {
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.empty-feed {
+    text-align: center;
+    padding: 2rem;
+    color: #64748b;
+}
+
+@media (max-width: 768px) {
+    .dashboard-container {
+        padding: 1rem;
     }
 
-    /* Dashboard Header */
-    .dashboard-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 2rem;
-        padding: 2rem;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: var(--border-radius-lg);
-        color: white;
-        box-shadow: var(--shadow-lg);
-        position: relative;
-        overflow: hidden;
-    }
-
-    .dashboard-header::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 200px;
-        height: 200px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 50%;
-        transform: translate(50px, -50px);
-    }
-
-    .header-content {
-        display: flex;
-        align-items: center;
-        gap: 1.5rem;
-        z-index: 1;
-        position: relative;
-    }
-
-    .header-icon {
-        width: 70px;
-        height: 70px;
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2rem;
-        backdrop-filter: blur(10px);
-    }
-
-    .header-text h1 {
-        font-size: 2.2rem;
-        font-weight: 700;
-        margin: 0 0 0.5rem 0;
-        font-family: 'Poppins', sans-serif;
-    }
-
-    .header-text p {
-        font-size: 1.1rem;
-        opacity: 0.9;
-        margin: 0;
-    }
-
-    .header-actions {
-        display: flex;
+    .welcome-header {
+        flex-direction: column;
         gap: 1rem;
-        z-index: 1;
-        position: relative;
-    }
-
-    .btn-action, .btn-exit {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.75rem 1.5rem;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        border-radius: var(--border-radius);
-        background: rgba(255, 255, 255, 0.1);
-        color: white;
-        text-decoration: none;
-        font-weight: 500;
-        transition: var(--transition);
-        backdrop-filter: blur(10px);
-        cursor: pointer;
-    }
-
-    .btn-action:hover {
-        background: rgba(255, 255, 255, 0.2);
-        transform: translateY(-2px);
-    }
-
-    .btn-exit:hover {
-        background: rgba(239, 68, 68, 0.8);
-        border-color: rgba(239, 68, 68, 0.5);
-    }
-
-    /* Stats Overview */
-    .stats-overview {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-    }
-
-    .stat-card {
-        background: var(--surface-light);
-        border-radius: var(--border-radius-lg);
-        padding: 2rem;
-        display: flex;
-        align-items: center;
-        gap: 1.5rem;
-        box-shadow: var(--shadow-md);
-        border: 1px solid rgba(0, 0, 0, 0.05);
-        transition: var(--transition);
-        position: relative;
-        overflow: hidden;
-    }
-
-    body[data-theme="dark"] .stat-card {
-        background: var(--surface-dark);
-        border-color: rgba(255, 255, 255, 0.1);
-    }
-
-    .stat-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-    }
-
-    .stat-card.journals::before {
-        background: linear-gradient(90deg, #667eea, #764ba2);
-    }
-
-    .stat-card.emotions::before {
-        background: linear-gradient(90deg, #f093fb, #f5576c);
-    }
-
-    .stat-card.wellbeing::before {
-        background: linear-gradient(90deg, #4facfe, #00f2fe);
-    }
-
-    .stat-card.activities::before {
-        background: linear-gradient(90deg, #43e97b, #38f9d7);
-    }
-
-    .stat-card:hover {
-        transform: translateY(-4px);
-        box-shadow: var(--shadow-xl);
-    }
-
-    .stat-icon {
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        color: white;
-        flex-shrink: 0;
-    }
-
-    .stat-card.journals .stat-icon {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-    }
-
-    .stat-card.emotions .stat-icon {
-        background: linear-gradient(135deg, #f093fb, #f5576c);
-    }
-
-    .stat-card.wellbeing .stat-icon {
-        background: linear-gradient(135deg, #4facfe, #00f2fe);
-    }
-
-    .stat-card.activities .stat-icon {
-        background: linear-gradient(135deg, #43e97b, #38f9d7);
-    }
-
-    .stat-content {
-        flex: 1;
-    }
-
-    .stat-number {
-        font-size: 2.5rem;
-        font-weight: 700;
-        margin-bottom: 0.25rem;
-        color: var(--text-light);
-    }
-
-    body[data-theme="dark"] .stat-number {
-        color: var(--text-dark);
-    }
-
-    .stat-label {
-        font-size: 1rem;
-        font-weight: 500;
-        color: #64748b;
-        margin-bottom: 0.25rem;
-    }
-
-    body[data-theme="dark"] .stat-label {
-        color: #94a3b8;
-    }
-
-    .stat-trend {
-        font-size: 0.85rem;
-        color: #64748b;
-    }
-
-    .stat-trend.positive {
-        color: #059669;
-    }
-
-    body[data-theme="dark"] .stat-trend {
-        color: #94a3b8;
-    }
-
-    /* Main Content */
-    .main-content {
-        display: grid;
-        grid-template-columns: 2fr 1fr;
-        gap: 2rem;
-    }
-
-    .content-card {
-        background: var(--surface-light);
-        border-radius: var(--border-radius-lg);
-        padding: 2rem;
-        box-shadow: var(--shadow-md);
-        border: 1px solid rgba(0, 0, 0, 0.05);
-    }
-
-    body[data-theme="dark"] .content-card {
-        background: var(--surface-dark);
-        border-color: rgba(255, 255, 255, 0.1);
-    }
-
-    .timeline-card {
-        grid-row: 1 / 3;
-    }
-
-    .card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1.5rem;
-        padding-bottom: 1rem;
-        border-bottom: 1px solid #e2e8f0;
-    }
-
-    body[data-theme="dark"] .card-header {
-        border-color: #374151;
-    }
-
-    .card-title {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-    }
-
-    .card-title h3 {
-        font-size: 1.3rem;
-        font-weight: 600;
-        margin: 0;
-        color: var(--text-light);
-    }
-
-    body[data-theme="dark"] .card-title h3 {
-        color: var(--text-dark);
-    }
-
-    .card-title i {
-        color: var(--calm-blue);
-        font-size: 1.2rem;
-    }
-
-    .btn-filter {
-        padding: 0.5rem 1rem;
-        border: 1px solid #e2e8f0;
-        border-radius: var(--border-radius);
-        background: transparent;
-        color: var(--text-light);
-        cursor: pointer;
-        transition: var(--transition);
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    body[data-theme="dark"] .btn-filter {
-        border-color: #374151;
-        color: var(--text-dark);
-    }
-
-    .btn-filter:hover {
-        background: var(--calm-blue);
-        color: white;
-        border-color: var(--calm-blue);
-    }
-
-    /* Timeline */
-    .timeline {
-        max-height: 600px;
-        overflow-y: auto;
-        position: relative;
-    }
-
-    .timeline::before {
-        content: '';
-        position: absolute;
-        left: 30px;
-        top: 0;
-        bottom: 0;
-        width: 2px;
-        background: linear-gradient(to bottom, var(--calm-blue), var(--gentle-purple));
-    }
-
-    .timeline-item {
-        display: flex;
-        gap: 1rem;
-        margin-bottom: 2rem;
-        position: relative;
-    }
-
-    .timeline-marker {
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 1.2rem;
-        flex-shrink: 0;
-        z-index: 1;
-    }
-
-    .timeline-item.journal .timeline-marker {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-    }
-
-    .timeline-item.emotion .timeline-marker {
-        background: linear-gradient(135deg, #f093fb, #f5576c);
-    }
-
-    .timeline-content {
-        flex: 1;
-        background: rgba(248, 250, 252, 0.8);
-        border-radius: var(--border-radius);
-        padding: 1.5rem;
-        border: 1px solid #e2e8f0;
-    }
-
-    body[data-theme="dark"] .timeline-content {
-        background: rgba(15, 23, 42, 0.8);
-        border-color: #374151;
-    }
-
-    .timeline-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 0.75rem;
-    }
-
-    .timeline-type {
-        font-weight: 600;
-        color: var(--calm-blue);
-        font-size: 0.9rem;
-        text-transform: uppercase;
-        letter-spacing: 0.025em;
-    }
-
-    .timeline-time {
-        font-size: 0.85rem;
-        color: #64748b;
-    }
-
-    body[data-theme="dark"] .timeline-time {
-        color: #94a3b8;
-    }
-
-    .timeline-body {
-        color: var(--text-light);
-        line-height: 1.5;
-        margin-bottom: 0.75rem;
-    }
-
-    body[data-theme="dark"] .timeline-body {
-        color: var(--text-dark);
-    }
-
-    .timeline-mood {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .mood-emoji {
-        font-size: 1.2rem;
-    }
-
-    .mood-text {
-        font-size: 0.9rem;
-        color: #64748b;
-    }
-
-    .emotion-tags {
-        display: flex;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-    }
-
-    .emotion-tag {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        font-weight: 500;
-    }
-
-    .emotion-tag.face {
-        background: rgba(99, 102, 241, 0.1);
-        color: var(--calm-blue);
-    }
-
-    .emotion-tag.voice {
-        background: rgba(139, 92, 246, 0.1);
-        color: var(--gentle-purple);
-    }
-
-    .empty-timeline {
         text-align: center;
-        padding: 3rem;
-        color: #64748b;
     }
 
-    body[data-theme="dark"] .empty-timeline {
-        color: #94a3b8;
+    .quick-actions {
+        width: 100%;
+        flex-direction: column;
     }
 
-    .empty-timeline i {
-        font-size: 3rem;
-        margin-bottom: 1rem;
-        opacity: 0.5;
+    .individuals-grid {
+        grid-template-columns: 1fr;
     }
 
-    /* Quick Actions */
-    .actions-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1rem;
+    .stats-summary {
+        grid-template-columns: 1fr;
     }
 
-    .action-btn {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding: 1.5rem;
-        border: none;
-        border-radius: var(--border-radius);
-        background: var(--surface-light);
-        border: 2px solid #e2e8f0;
-        cursor: pointer;
-        transition: var(--transition);
-        text-align: left;
-    }
-
-    body[data-theme="dark"] .action-btn {
-        background: var(--surface-dark);
-        border-color: #374151;
-    }
-
-    .action-btn.primary:hover {
-        border-color: #667eea;
-        background: rgba(102, 126, 234, 0.05);
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-md);
-    }
-
-    .action-btn.secondary:hover {
-        border-color: #f093fb;
-        background: rgba(240, 147, 251, 0.05);
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-md);
-    }
-
-    .action-btn.tertiary:hover {
-        border-color: #4facfe;
-        background: rgba(79, 172, 254, 0.05);
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-md);
-    }
-
-    .action-btn.quaternary:hover {
-        border-color: #43e97b;
-        background: rgba(67, 233, 123, 0.05);
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-md);
-    }
-
-    .action-icon {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 1.2rem;
-        flex-shrink: 0;
-    }
-
-    .action-btn.primary .action-icon {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-    }
-
-    .action-btn.secondary .action-icon {
-        background: linear-gradient(135deg, #f093fb, #f5576c);
-    }
-
-    .action-btn.tertiary .action-icon {
-        background: linear-gradient(135deg, #4facfe, #00f2fe);
-    }
-
-    .action-btn.quaternary .action-icon {
-        background: linear-gradient(135deg, #43e97b, #38f9d7);
-    }
-
-    .action-text {
-        flex: 1;
-    }
-
-    .action-text span {
-        display: block;
-        font-weight: 600;
-        color: var(--text-light);
-        margin-bottom: 0.25rem;
-    }
-
-    body[data-theme="dark"] .action-text span {
-        color: var(--text-dark);
-    }
-
-    .action-text small {
-        font-size: 0.85rem;
-        color: #64748b;
-    }
-
-    body[data-theme="dark"] .action-text small {
-        color: #94a3b8;
-    }
-
-    /* Tools Grid */
-    .tools-grid {
-        display: flex;
+    .feed-header {
         flex-direction: column;
         gap: 1rem;
     }
 
-    .tool-item {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding: 1.5rem;
-        background: rgba(248, 250, 252, 0.5);
-        border: 1px solid #e2e8f0;
-        border-radius: var(--border-radius);
-        text-decoration: none;
-        color: var(--text-light);
-        transition: var(--transition);
-    }
-
-    body[data-theme="dark"] .tool-item {
-        background: rgba(15, 23, 42, 0.5);
-        border-color: #374151;
-        color: var(--text-dark);
-    }
-
-    .tool-item:hover {
-        background: rgba(99, 102, 241, 0.05);
-        border-color: var(--calm-blue);
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-md);
-    }
-
-    .tool-icon {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
+    .feed-filters {
+        width: 100%;
         justify-content: center;
-        color: white;
-        font-size: 1.2rem;
-        flex-shrink: 0;
     }
-
-    .tool-icon.emotion {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-    }
-
-    .tool-icon.chat {
-        background: linear-gradient(135deg, #f093fb, #f5576c);
-    }
-
-    .tool-icon.journal {
-        background: linear-gradient(135deg, #4facfe, #00f2fe);
-    }
-
-    .tool-icon.games {
-        background: linear-gradient(135deg, #43e97b, #38f9d7);
-    }
-
-    .tool-content {
-        flex: 1;
-    }
-
-    .tool-content h4 {
-        margin: 0 0 0.25rem 0;
-        font-weight: 600;
-        font-size: 1.1rem;
-    }
-
-    .tool-content p {
-        margin: 0;
-        font-size: 0.9rem;
-        color: #64748b;
-        line-height: 1.4;
-    }
-
-    body[data-theme="dark"] .tool-content p {
-        color: #94a3b8;
-    }
-
-    .tool-arrow {
-        color: #64748b;
-        transition: var(--transition);
-    }
-
-    body[data-theme="dark"] .tool-arrow {
-        color: #94a3b8;
-    }
-
-    .tool-item:hover .tool-arrow {
-        color: var(--calm-blue);
-        transform: translateX(4px);
-    }
-
-    /* Responsive Design */
-    @media (max-width: 768px) {
-        .caregiver-dashboard {
-            padding: 1rem;
-        }
-
-        .dashboard-header {
-            flex-direction: column;
-            gap: 1rem;
-            text-align: center;
-        }
-
-        .main-content {
-            grid-template-columns: 1fr;
-        }
-        
-        .stats-overview {
-            grid-template-columns: 1fr;
-        }
-
-        .actions-grid {
-            grid-template-columns: 1fr;
-        }
-    }
+}
 </style>
 
 <script>
-    function generateReport() {
-        alert('Generating comprehensive wellbeing report...');
-        // Add actual report generation logic here
-    }
+document.addEventListener('DOMContentLoaded', function() {
+    // Feed filtering
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    const feedItems = document.querySelectorAll('.feed-item');
 
-    function openEmotionCheck() {
-        window.location.href = "{% url 'emotion' %}";
-    }
-
-    function openJournalPrompt() {
-        window.location.href = "{% url 'daily_journal' %}";
-    }
-
-    function suggestActivity() {
-        window.location.href = "{% url 'games_hub' %}";
-    }
-
-    function scheduleReminder() {
-        alert('Reminder scheduling feature coming soon!');
-        // Add actual reminder scheduling logic here
-    }
+    filterButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const filter = button.dataset.filter;
+            
+            // Update active button
+            filterButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            
+            // Filter feed items
+            feedItems.forEach(item => {
+                if (filter === 'all' || item.dataset.type === filter) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+    });
+});
 </script>
-
-    <!-- Stats Grid -->
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-icon">
-                <i class="fas fa-book"></i>
-            </div>
-            <div class="stat-number">{{ journal_count }}</div>
-            <div class="stat-label">Total Journals</div>
-        </div>
-        
-        <div class="stat-card">
-            <div class="stat-icon">
-                <i class="fas fa-heart"></i>
-            </div>
-            <div class="stat-number">{{ emotion_count }}</div>
-            <div class="stat-label">Emotion Records</div>
-        </div>
-    </div>
-
-    <div class="content-grid">
-        <div class="content-section">
-            <div class="section-header">
-                <div class="section-icon journals">
-                    <i class="fas fa-journal-whills"></i>
-                </div>
-                <h2 class="section-title">Recent Journals</h2>
-            </div>
-            
-            <div class="item-list">
-                {% if recent_journals %}
-                    {% for journal in recent_journals %}
-                        <div class="item-card">
-                            <div class="item-date">
-                                <i class="fas fa-calendar"></i>
-                                {{ journal.created_at|date:"M d, Y - g:i A" }}
-                            </div>
-                            <div class="item-content">
-                                {% if journal.title %}
-                                    <strong>{{ journal.title }}</strong><br>
-                                {% endif %}
-                                {{ journal.content|truncatewords:20|default:"Voice-only entry" }}
-                            </div>
-                            {% if journal.mood_rating %}
-                                <div class="mood-indicator" style="margin-top: 0.5rem;">
-                                    {% if journal.mood_rating == 1 %}😢
-                                    {% elif journal.mood_rating == 2 %}😔
-                                    {% elif journal.mood_rating == 3 %}😐
-                                    {% elif journal.mood_rating == 4 %}😊
-                                    {% elif journal.mood_rating == 5 %}😄
-                                    {% endif %}
-                                    <span style="margin-left: 0.5rem; font-size: 0.9rem; color: #64748b;">Mood: {{ journal.mood_rating }}/5</span>
-                                </div>
-                            {% endif %}
-                            {% if journal.audio_file %}
-                                <div style="margin-top: 0.75rem;">
-                                    <audio controls style="width: 100%; height: 35px;">
-                                        <source src="{{ journal.audio_file.url }}" type="audio/wav">
-                                        Your browser does not support the audio element.
-                                    </audio>
-                                </div>
-                            {% endif %}
-                        </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="empty-state">
-                        <i class="fas fa-book-open"></i>
-                        <p>No journal entries yet</p>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-
-        <div class="content-section">
-            <div class="section-header">
-                <div class="section-icon emotions">
-                    <i class="fas fa-smile"></i>
-                </div>
-                <h2 class="section-title">Recent Emotions</h2>
-            </div>
-            
-            <div class="item-list">
-                {% if recent_emotions %}
-                    {% for emotion in recent_emotions %}
-                        <div class="item-card">
-                            <div class="item-date">
-                                <i class="fas fa-clock"></i>
-                                {{ emotion.timestamp|date:"M d, Y - g:i A" }}
-                            </div>
-                            <div class="emotion-item">
-                                {% if emotion.face_emotion %}
-                                    <span class="emotion-type {{ emotion.face_emotion|lower }}">
-                                        <i class="fas fa-smile"></i> {{ emotion.face_emotion|title }}
-                                    </span>
-                                {% endif %}
-                                {% if emotion.voice_emotion %}
-                                    <span class="emotion-type {{ emotion.voice_emotion|lower }}" style="margin-left: 0.5rem;">
-                                        <i class="fas fa-microphone"></i> {{ emotion.voice_emotion|title }}
-                                    </span>
-                                {% endif %}
-                                {% if emotion.face_confidence or emotion.voice_confidence %}
-                                    <div style="margin-top: 0.25rem;">
-                                        {% if emotion.face_confidence %}
-                                            <span class="emotion-confidence">Face: {{ emotion.face_confidence|floatformat:1 }}%</span>
-                                        {% endif %}
-                                        {% if emotion.voice_confidence %}
-                                            <span class="emotion-confidence" style="margin-left: 0.5rem;">Voice: {{ emotion.voice_confidence|floatformat:1 }}%</span>
-                                        {% endif %}
-                                    </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="empty-state">
-                        <i class="fas fa-heart"></i>
-                        <p>No emotion records yet</p>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <div class="content-section tools-section">
-        <div class="section-header">
-            <div class="section-icon" style="background: linear-gradient(135deg, var(--warm-orange), var(--gentle-purple));">
-                <i class="fas fa-tools"></i>
-            </div>
-            <h2 class="section-title">Quick Tools</h2>
-        </div>
-        
-        <div class="tools-grid">
-            <a href="{% url 'emotion' %}" class="tool-card">
-                <div class="tool-icon">
-                    <i class="fas fa-smile"></i>
-                </div>
-                <div class="tool-content">
-                    <h4>Emotion Detection</h4>
-                    <p>Monitor emotional states and patterns</p>
-                </div>
-            </a>
-            
-            <a href="{% url 'chat' %}" class="tool-card">
-                <div class="tool-icon">
-                    <i class="fas fa-comments"></i>
-                </div>
-                <div class="tool-content">
-                    <h4>AI Chat Support</h4>
-                    <p>Access therapeutic conversations</p>
-                </div>
-            </a>
-            
-            <a href="{% url 'daily_journal' %}" class="tool-card">
-                <div class="tool-icon">
-                    <i class="fas fa-book"></i>
-                </div>
-                <div class="tool-content">
-                    <h4>Daily Journal</h4>
-                    <p>Record thoughts and feelings</p>
-                </div>
-            </a>
-            
-            <a href="{% url 'games_hub' %}" class="tool-card">
-                <div class="tool-icon">
-                    <i class="fas fa-gamepad"></i>
-                </div>
-                <div class="tool-content">
-                    <h4>Therapeutic Games</h4>
-                    <p>Calming and focus activities</p>
-                </div>
-            </a>
-        </div>
-    </div>
-
-    <div class="logout-section">
-        <p>
-            <i class="fas fa-shield-alt"></i>
-            You are currently in secure caregiver mode
-        </p>
-        <a href="{% url 'caregiver_mode_logout' %}" class="btn-logout">
-            <i class="fas fa-sign-out-alt"></i> Exit Caregiver Mode
-        </a>
-    </div>
-            </div>
-            <div class="dashboard-text">
-                <h1>Caregiver Mode</h1>
-                <p>Monitoring {{ user.name }}'s wellbeing and progress</p>
-            </div>
-        </div>
-        <div class="dashboard-actions">
-            <a href="{% url 'caregiver_mode_logout' %}" class="btn btn-secondary">
-                <i class="fas fa-sign-out-alt"></i> Exit Mode
-            </a>
-        </div>
-    </div>
-
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-icon journals">
-                <i class="fas fa-book"></i>
-            </div>
-            <div class="stat-number">{{ journal_count }}</div>
-            <div class="stat-label">Total Journals</div>
-        </div>
-        
-        <div class="stat-card">
-            <div class="stat-icon emotions">
-                <i class="fas fa-heart"></i>
-            </div>
-            <div class="stat-number">{{ emotion_count }}</div>
-            <div class="stat-label">Emotion Records</div>
-        </div>
-    </div>
-
-    <div class="content-grid">
-        <div class="content-section">
-            <div class="section-header">
-                <div class="section-icon journals">
-                    <i class="fas fa-journal-whills"></i>
-                </div>
-                <h2 class="section-title">Recent Journals</h2>
-            </div>
-            
-            <div class="item-list">
-                {% if recent_journals %}
-                    {% for journal in recent_journals %}
-                        <div class="item-card">
-                            <div class="item-date">
-                                <i class="fas fa-calendar"></i>
-                                {{ journal.created_at|date:"M d, Y - g:i A" }}
-                            </div>
-                            <div class="item-content">
-                                {% if journal.title %}
-                                    <strong>{{ journal.title }}</strong><br>
-                                {% endif %}
-                                {{ journal.content|truncatewords:20|default:"Voice-only entry" }}
-                            </div>
-                            {% if journal.mood_rating %}
-                                <div class="mood-indicator" style="margin-top: 0.5rem;">
-                                    {% if journal.mood_rating == 1 %}😢
-                                    {% elif journal.mood_rating == 2 %}😔
-                                    {% elif journal.mood_rating == 3 %}😐
-                                    {% elif journal.mood_rating == 4 %}😊
-                                    {% elif journal.mood_rating == 5 %}😄
-                                    {% endif %}
-                                    <span style="margin-left: 0.5rem; font-size: 0.9rem; color: #64748b;">Mood: {{ journal.mood_rating }}/5</span>
-                                </div>
-                            {% endif %}
-                            {% if journal.audio_file %}
-                                <div style="margin-top: 0.75rem;">
-                                    <audio controls style="width: 100%; height: 35px;">
-                                        <source src="{{ journal.audio_file.url }}" type="audio/wav">
-                                        Your browser does not support the audio element.
-                                    </audio>
-                                </div>
-                            {% endif %}
-                        </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="empty-state">
-                        <i class="fas fa-book-open"></i>
-                        <p>No journal entries yet</p>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-
-        <div class="content-section">
-            <div class="section-header">
-                <div class="section-icon emotions">
-                    <i class="fas fa-smile"></i>
-                </div>
-                <h2 class="section-title">Recent Emotions</h2>
-            </div>
-            
-            <div class="item-list">
-                {% if recent_emotions %}
-                    {% for emotion in recent_emotions %}
-                        <div class="item-card">
-                            <div class="item-date">
-                                <i class="fas fa-clock"></i>
-                                {{ emotion.timestamp|date:"M d, Y - g:i A" }}
-                            </div>
-                            <div class="emotion-item">
-                                {% if emotion.face_emotion %}
-                                    <span class="emotion-type {{ emotion.face_emotion|lower }}">
-                                        <i class="fas fa-smile"></i> {{ emotion.face_emotion|title }}
-                                    </span>
-                                {% endif %}
-                                {% if emotion.voice_emotion %}
-                                    <span class="emotion-type {{ emotion.voice_emotion|lower }}" style="margin-left: 0.5rem;">
-                                        <i class="fas fa-microphone"></i> {{ emotion.voice_emotion|title }}
-                                    </span>
-                                {% endif %}
-                                {% if emotion.face_confidence or emotion.voice_confidence %}
-                                    <div style="margin-top: 0.25rem;">
-                                        {% if emotion.face_confidence %}
-                                            <span class="emotion-confidence">Face: {{ emotion.face_confidence|floatformat:1 }}%</span>
-                                        {% endif %}
-                                        {% if emotion.voice_confidence %}
-                                            <span class="emotion-confidence" style="margin-left: 0.5rem;">Voice: {{ emotion.voice_confidence|floatformat:1 }}%</span>
-                                        {% endif %}
-                                    </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="empty-state">
-                        <i class="fas fa-heart"></i>
-                        <p>No emotion records yet</p>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <div class="content-section tools-section">
-        <div class="section-header">
-            <div class="section-icon" style="background: linear-gradient(135deg, var(--warm-orange), var(--gentle-purple));">
-                <i class="fas fa-tools"></i>
-            </div>
-            <h2 class="section-title">Quick Tools</h2>
-        </div>
-        
-        <div class="tools-grid">
-            <a href="{% url 'emotion' %}" class="tool-card">
-                <div class="tool-icon">
-                    <i class="fas fa-smile"></i>
-                </div>
-                <div class="tool-content">
-                    <h4>Emotion Detection</h4>
-                    <p>Monitor emotional states and patterns</p>
-                </div>
-            </a>
-            
-            <a href="{% url 'chat' %}" class="tool-card">
-                <div class="tool-icon">
-                    <i class="fas fa-comments"></i>
-                </div>
-                <div class="tool-content">
-                    <h4>AI Chat Support</h4>
-                    <p>Access therapeutic conversations</p>
-                </div>
-            </a>
-            
-            <a href="{% url 'daily_journal' %}" class="tool-card">
-                <div class="tool-icon">
-                    <i class="fas fa-book"></i>
-                </div>
-                <div class="tool-content">
-                    <h4>Daily Journal</h4>
-                    <p>Record thoughts and feelings</p>
-                </div>
-            </a>
-            
-            <a href="{% url 'games_hub' %}" class="tool-card">
-                <div class="tool-icon">
-                    <i class="fas fa-gamepad"></i>
-                </div>
-                <div class="tool-content">
-                    <h4>Therapeutic Games</h4>
-                    <p>Calming and focus activities</p>
-                </div>
-            </a>
-        </div>
-    </div>
-
-    <div class="logout-section">
-        <p>
-            <i class="fas fa-shield-alt"></i>
-            You are currently in secure caregiver mode
-        </p>
-        <a href="{% url 'caregiver_mode_logout' %}" class="btn-logout">
-            <i class="fas fa-sign-out-alt"></i> Exit Caregiver Mode
-        </a>
-    </div>
-</div>
 {% endblock %}

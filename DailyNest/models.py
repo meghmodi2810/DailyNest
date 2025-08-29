@@ -303,24 +303,26 @@ class CareNote(models.Model):
         return [tag.strip() for tag in self.tags.split(',') if tag.strip()]
 
 class ScheduledNote(models.Model):
-    """Model for scheduled notes for autistic persons"""
-    FREQUENCY_CHOICES = [
-        ('once', 'One Time'),
-        ('daily', 'Daily'),
-        ('weekly', 'Weekly'),
-        ('monthly', 'Monthly'),
-    ]
-    
+    """Model for scheduled notes assigned to autistic individuals"""
     STATUS_CHOICES = [
         ('pending', 'Pending'),
-        ('sent', 'Sent'),
+        ('completed', 'Completed'),
+        ('missed', 'Missed'),
         ('cancelled', 'Cancelled'),
     ]
-    
+
+    REMINDER_CHOICES = [
+        (15, '15 minutes before'),
+        (30, '30 minutes before'),
+        (60, '1 hour before'),
+        (120, '2 hours before'),
+        (1440, '1 day before'),
+    ]
+
     caregiver = models.ForeignKey(
         'CustomUser',
         on_delete=models.CASCADE,
-        related_name='scheduled_notes_created',
+        related_name='notes_scheduled',
         limit_choices_to={'role': 'caregiver'}
     )
     autistic_person = models.ForeignKey(
@@ -329,23 +331,93 @@ class ScheduledNote(models.Model):
         related_name='scheduled_notes_received',
         limit_choices_to={'role': 'autistic_person'}
     )
-    title = models.CharField(max_length=200, help_text="Title for the scheduled note")
-    content = models.TextField(help_text="Content of the scheduled note")
-    frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES, default='once')
-    scheduled_time = models.DateTimeField(help_text="When to send/create the note")
-    next_run_time = models.DateTimeField(help_text="Next time this note should be processed")
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-    is_active = models.BooleanField(default=True)
+    title = models.CharField(max_length=200)
+    content = models.TextField()
+    scheduled_time = models.DateTimeField()
+    reminder_time = models.IntegerField(choices=REMINDER_CHOICES, default=30)
+    priority = models.CharField(
+        max_length=10,
+        choices=[
+            ('low', 'Low'),
+            ('medium', 'Medium'),
+            ('high', 'High'),
+        ],
+        default='medium'
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='pending'
+    )
+    is_recurring = models.BooleanField(default=False)
+    recurrence_pattern = models.CharField(
+        max_length=20,
+        choices=[
+            ('daily', 'Daily'),
+            ('weekly', 'Weekly'),
+            ('monthly', 'Monthly'),
+        ],
+        null=True,
+        blank=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
+    completed_at = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True, null=True)
+
     class Meta:
-        ordering = ['next_run_time']
+        ordering = ['scheduled_time', '-priority']
         verbose_name = 'Scheduled Note'
         verbose_name_plural = 'Scheduled Notes'
-    
+
     def __str__(self):
-        return f"Scheduled: {self.title} for {self.autistic_person.name}"
+        return f"{self.title} - {self.autistic_person.name} ({self.get_status_display()})"
+
+    def mark_completed(self, completion_notes=None):
+        """Mark the note as completed with optional notes"""
+        self.status = 'completed'
+        self.completed_at = timezone.now()
+        if completion_notes:
+            self.notes = completion_notes
+        self.save()
+
+        # If recurring, create next occurrence
+        if self.is_recurring:
+            self.create_next_occurrence()
+
+    def mark_missed(self):
+        """Mark the note as missed if not completed by scheduled time"""
+        self.status = 'missed'
+        self.save()
+
+        # If recurring, create next occurrence
+        if self.is_recurring:
+            self.create_next_occurrence()
+
+    def create_next_occurrence(self):
+        """Create next occurrence for recurring notes"""
+        if not self.is_recurring:
+            return
+
+        next_time = self.scheduled_time
+        if self.recurrence_pattern == 'daily':
+            next_time += timedelta(days=1)
+        elif self.recurrence_pattern == 'weekly':
+            next_time += timedelta(weeks=1)
+        elif self.recurrence_pattern == 'monthly':
+            # Add one month (approximately)
+            next_time += timedelta(days=30)
+
+        ScheduledNote.objects.create(
+            caregiver=self.caregiver,
+            autistic_person=self.autistic_person,
+            title=self.title,
+            content=self.content,
+            scheduled_time=next_time,
+            reminder_time=self.reminder_time,
+            priority=self.priority,
+            is_recurring=True,
+            recurrence_pattern=self.recurrence_pattern
+        )
 
 class PasswordResetOTP(models.Model):
     """Model for password reset OTP verification"""

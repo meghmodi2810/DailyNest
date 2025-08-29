@@ -240,28 +240,83 @@ class ResetPasswordForm(forms.Form):
         return cleaned_data
 
 class ScheduledNoteForm(forms.ModelForm):
-    """Form for scheduling notes"""
+    schedule_date = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        help_text='Select the date for this note'
+    )
+    schedule_time = forms.TimeField(
+        widget=forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
+        help_text='Select the time for this note'
+    )
+    recurrence_pattern = forms.ChoiceField(
+        choices=[
+            ('', 'No recurrence'),
+            ('daily', 'Daily'),
+            ('weekly', 'Weekly'),
+            ('monthly', 'Monthly'),
+        ],
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    is_recurring = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+    )
+    reminder_time = forms.IntegerField(
+        required=False,
+        min_value=5,
+        max_value=120,
+        initial=30,
+        widget=forms.NumberInput(attrs={'class': 'form-control'}),
+        help_text='Minutes before the scheduled time to send a reminder (5-120 minutes)'
+    )
+
     class Meta:
         model = ScheduledNote
-        fields = ['title', 'content', 'frequency', 'scheduled_time']
+        fields = ['title', 'content', 'priority', 'schedule_date', 'schedule_time', 
+                 'is_recurring', 'recurrence_pattern', 'reminder_time']
         widgets = {
-            'title': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Enter note title...'
-            }),
-            'content': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 4,
-                'placeholder': 'Enter note content...'
-            }),
-            'frequency': forms.Select(attrs={
-                'class': 'form-control'
-            }),
-            'scheduled_time': forms.DateTimeInput(attrs={
-                'class': 'form-control',
-                'type': 'datetime-local'
-            }),
+            'title': forms.TextInput(attrs={'class': 'form-control'}),
+            'content': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+            'priority': forms.Select(attrs={'class': 'form-select'}),
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        schedule_date = cleaned_data.get('schedule_date')
+        schedule_time = cleaned_data.get('schedule_time')
+        is_recurring = cleaned_data.get('is_recurring')
+        recurrence_pattern = cleaned_data.get('recurrence_pattern')
+
+        if schedule_date and schedule_time:
+            # Combine date and time for validation
+            from django.utils import timezone
+            import datetime
+            scheduled_datetime = datetime.datetime.combine(
+                schedule_date, 
+                schedule_time, 
+                tzinfo=timezone.get_current_timezone()
+            )
+            
+            # Check if datetime is in the past
+            if scheduled_datetime < timezone.now():
+                raise forms.ValidationError('Scheduled time must be in the future.')
+
+            # Store the combined datetime
+            cleaned_data['scheduled_time'] = scheduled_datetime
+
+        # Validate recurrence pattern if is_recurring is checked
+        if is_recurring and not recurrence_pattern:
+            raise forms.ValidationError('Please select a recurrence pattern for recurring notes.')
+
+        return cleaned_data
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.scheduled_time = self.cleaned_data['scheduled_time']
+        if commit:
+            instance.save()
+        return instance
 
 class CareRelationshipForm(forms.ModelForm):
     """Form for creating care relationships"""

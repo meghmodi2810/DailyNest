@@ -1,0 +1,385 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Scheduled Notes{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h2">Scheduled Notes</h1>
+        <a href="{% url 'schedule_note_view' %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Schedule New Note
+        </a>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-body">
+            <div class="filters mb-4">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <select id="personFilter" class="form-select">
+                            <option value="">All Individuals</option>
+                            {% for person in autistic_users %}
+                                <option value="{{ person.id }}">{{ person.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <select id="statusFilter" class="form-select">
+                            <option value="">All Statuses</option>
+                            <option value="pending">Pending</option>
+                            <option value="completed">Completed</option>
+                            <option value="missed">Missed</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <select id="recurringFilter" class="form-select">
+                            <option value="">All Types</option>
+                            <option value="one-time">One-time</option>
+                            <option value="recurring">Recurring</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            {% if scheduled_notes %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Individual</th>
+                                <th>Title</th>
+                                <th>Scheduled For</th>
+                                <th>Status</th>
+                                <th>Priority</th>
+                                <th>Recurring</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for note in scheduled_notes %}
+                            <tr class="note-row" 
+                                data-person="{{ note.autistic_person.id }}"
+                                data-status="{{ note.status }}"
+                                data-recurring="{{ note.is_recurring|yesno:'recurring,one-time' }}">
+                                <td>{{ note.autistic_person.name }}</td>
+                                <td>
+                                    <span class="note-title">{{ note.title }}</span>
+                                    {% if note.content %}
+                                        <i class="fas fa-info-circle text-muted" 
+                                           data-bs-toggle="tooltip" 
+                                           title="{{ note.content }}"></i>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {{ note.scheduled_time|date:"M d, Y" }}
+                                    <br>
+                                    <small class="text-muted">{{ note.scheduled_time|date:"g:i A" }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ note.status|yesno:'success,warning,danger' }}">
+                                        {{ note.get_status_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ note.priority }}">
+                                        {{ note.get_priority_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if note.is_recurring %}
+                                        <span class="badge bg-info">
+                                            {{ note.get_recurrence_pattern_display }}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">One-time</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group">
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-primary edit-note" 
+                                                data-note-id="{{ note.id }}"
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#editNoteModal">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        {% if note.status == 'pending' %}
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-outline-success complete-note" 
+                                                    data-note-id="{{ note.id }}">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                        {% endif %}
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-danger delete-note" 
+                                                data-note-id="{{ note.id }}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-calendar-alt fa-3x text-muted mb-3"></i>
+                    <h3>No Scheduled Notes</h3>
+                    <p class="text-muted">You haven't scheduled any notes yet.</p>
+                    <a href="{% url 'schedule_note_view' %}" class="btn btn-primary">
+                        Schedule Your First Note
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Edit Note Modal -->
+<div class="modal fade" id="editNoteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Scheduled Note</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editNoteForm">
+                    {% csrf_token %}
+                    <input type="hidden" id="editNoteId">
+                    <div class="mb-3">
+                        <label for="editTitle" class="form-label">Title</label>
+                        <input type="text" class="form-control" id="editTitle" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editContent" class="form-label">Content</label>
+                        <textarea class="form-control" id="editContent" rows="3"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editDate" class="form-label">Date</label>
+                            <input type="date" class="form-control" id="editDate" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editTime" class="form-label">Time</label>
+                            <input type="time" class="form-control" id="editTime" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editPriority" class="form-label">Priority</label>
+                        <select class="form-select" id="editPriority">
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveNoteChanges">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Filtering functionality
+    const personFilter = document.getElementById('personFilter');
+    const statusFilter = document.getElementById('statusFilter');
+    const recurringFilter = document.getElementById('recurringFilter');
+    const noteRows = document.querySelectorAll('.note-row');
+
+    function applyFilters() {
+        const personValue = personFilter.value;
+        const statusValue = statusFilter.value;
+        const recurringValue = recurringFilter.value;
+
+        noteRows.forEach(row => {
+            const personMatch = !personValue || row.dataset.person === personValue;
+            const statusMatch = !statusValue || row.dataset.status === statusValue;
+            const recurringMatch = !recurringValue || row.dataset.recurring === recurringValue;
+
+            row.style.display = personMatch && statusMatch && recurringMatch ? '' : 'none';
+        });
+    }
+
+    [personFilter, statusFilter, recurringFilter].forEach(filter => {
+        filter.addEventListener('change', applyFilters);
+    });
+
+    // Note completion
+    document.querySelectorAll('.complete-note').forEach(button => {
+        button.addEventListener('click', async function() {
+            const noteId = this.dataset.noteId;
+            if (confirm('Mark this note as completed?')) {
+                try {
+                    const response = await fetch(`/caregiver/notes/${noteId}/complete/`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        location.reload();
+                    } else {
+                        const data = await response.json();
+                        alert(data.message || 'Error completing note');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error marking note as completed');
+                }
+            }
+        });
+    });
+
+    // Note deletion
+    document.querySelectorAll('.delete-note').forEach(button => {
+        button.addEventListener('click', async function() {
+            const noteId = this.dataset.noteId;
+            if (confirm('Are you sure you want to delete this note? This action cannot be undone.')) {
+                try {
+                    const response = await fetch(`/caregiver/notes/${noteId}/delete/`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        location.reload();
+                    } else {
+                        const data = await response.json();
+                        alert(data.message || 'Error deleting note');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error deleting note');
+                }
+            }
+        });
+    });
+
+    // Edit note functionality
+    document.querySelectorAll('.edit-note').forEach(button => {
+        button.addEventListener('click', async function() {
+            const noteId = this.dataset.noteId;
+            try {
+                const response = await fetch(`/caregiver/notes/${noteId}/`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch note details');
+                }
+                const note = await response.json();
+                
+                document.getElementById('editNoteId').value = note.id;
+                document.getElementById('editTitle').value = note.title;
+                document.getElementById('editContent').value = note.content;
+                document.getElementById('editPriority').value = note.priority;
+                
+                // Split datetime into date and time
+                const datetime = new Date(note.scheduled_time);
+                document.getElementById('editDate').value = datetime.toISOString().split('T')[0];
+                document.getElementById('editTime').value = datetime.toTimeString().slice(0,5);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error loading note details');
+            }
+        });
+    });
+
+    // Save note changes
+    document.getElementById('saveNoteChanges').addEventListener('click', async function() {
+        const noteId = document.getElementById('editNoteId').value;
+        const formData = {
+            title: document.getElementById('editTitle').value,
+            content: document.getElementById('editContent').value,
+            scheduled_time: `${document.getElementById('editDate').value}T${document.getElementById('editTime').value}`,
+            priority: document.getElementById('editPriority').value
+        };
+
+        try {
+            const response = await fetch(`/caregiver/notes/${noteId}/edit/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                },
+                body: JSON.stringify(formData)
+            });
+            
+            if (response.ok) {
+                location.reload();
+            } else {
+                const data = await response.json();
+                alert(data.message || 'Error saving changes');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error saving changes');
+        }
+    });
+});
+</script>
+
+<style>
+.note-title {
+    font-weight: 500;
+}
+
+.badge {
+    font-weight: 500;
+    padding: 0.5em 0.75em;
+}
+
+.bg-low {
+    background-color: #28a745;
+}
+
+.bg-medium {
+    background-color: #ffc107;
+}
+
+.bg-high {
+    background-color: #dc3545;
+}
+
+.btn-group .btn {
+    padding: 0.25rem 0.5rem;
+}
+
+.filters select {
+    max-width: 100%;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+@media (max-width: 768px) {
+    .table-responsive {
+        margin: 0 -1rem;
+    }
+    
+    .btn-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .btn-group .btn {
+        width: 100%;
+    }
+}
+</style>
+{% endblock %}

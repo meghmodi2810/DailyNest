@@ -1,10 +1,10 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 from django.contrib.auth.hashers import check_password
 from .models import CustomUser, EmotionRecord, CareRelationship, ChatMessage, UserPreference, PasswordResetOTP, JournalEntry, CareNote, ScheduledNote
 from .forms import CustomUserRegistrationForm, CustomLoginForm, CareNoteForm, ForgotPasswordForm, ResetPasswordForm, ScheduledNoteForm, UserPreferenceForm, UserProfileForm
@@ -22,7 +22,7 @@ from django.core.mail import send_mail
 from datetime import timedelta
 from django.conf import settings
 from django.utils import timezone
-from django.db.models import Case, When, IntegerField
+from django.db.models import Case, When, IntegerField, Value, Avg
 
 # Optional imports with fallbacks
 try:
@@ -153,90 +153,85 @@ def admin_dashboard(request):
 
 @login_required
 def caregiver_dashboard(request):
-    """Caregiver dashboard with patient monitoring"""
-    from .models import CareRelationship
-    from datetime import datetime, timedelta
-    from django.db.models import Count, Q, Avg
-    from django.db import models
+    """Dashboard view for caregivers to monitor their autistic individuals"""
+    # ...existing code...
     
-    # Get only autistic persons under this caregiver's care
+    if request.user.role != 'caregiver':
+        messages.error(request, 'Access denied. Only caregivers can access this dashboard.')
+        return redirect('dashboard')
+    
+    # Get all autistic users under care
     care_relationships = CareRelationship.objects.filter(
-        caregiver=request.user, 
+        caregiver=request.user,
         is_active=True
     ).select_related('autistic_person')
-    
     autistic_users = [rel.autistic_person for rel in care_relationships]
     
-    # Get recent emotions only for users under care
-    user_ids = [user.id for user in autistic_users]
-    recent_emotions = EmotionRecord.objects.filter(
-        user_id__in=user_ids
-    ).order_by('-timestamp')[:10]
-    
-    # Calculate journaling statistics
+    # Time ranges
     now = timezone.now()
     week_ago = now - timedelta(days=7)
     
-    # Get journal stats for each user
+    # Stats aggregation
     user_journal_stats = []
     total_weekly_entries = 0
-    total_overall_entries = 0
+    total_notes = 0
+    total_notes_completed = 0
+    recent_journal_entries = []
     
+    # Calculate stats for each user
     for user in autistic_users:
-        # Weekly entries (public only for caregivers)
+        # Weekly journal entries
         weekly_entries = JournalEntry.objects.filter(
             user=user,
-            created_at__gte=week_ago,
-            is_private=False
-        ).count()
+            created_at__gte=week_ago
+        )
         
-        # Overall entries (public only for caregivers)
-        overall_entries = JournalEntry.objects.filter(
-            user=user,
-            is_private=False
-        ).count()
+        # Today's notes
+        today_notes = CareNote.objects.filter(
+            autistic_person=user,
+            created_at__date=now.date()
+        )
         
-        # Recent entries for display
+        # Calculate averages and get recent entries
+        weekly_mood_avg = weekly_entries.aggregate(
+            Avg('mood_rating')
+        )['mood_rating__avg']
+        
         recent_entries = JournalEntry.objects.filter(
             user=user,
             is_private=False
-        ).order_by('-created_at')[:3]
+        ).order_by('-created_at')[:5]
         
-        # Average mood this week
-        weekly_mood_avg = JournalEntry.objects.filter(
-            user=user,
-            created_at__gte=week_ago,
-            is_private=False,
-            mood_rating__isnull=False
-        ).aggregate(avg_mood=Avg('mood_rating'))['avg_mood']
+        # Update totals
+        total_weekly_entries += weekly_entries.count()
+        total_notes += today_notes.count()
+        total_notes_completed += today_notes.filter(status='completed').count()
         
+        # Add user stats
         user_journal_stats.append({
             'user': user,
-            'weekly_entries': weekly_entries,
-            'overall_entries': overall_entries,
+            'weekly_entries': weekly_entries.count(),
+            'weekly_mood_avg': weekly_mood_avg,
+            'completed_notes': today_notes.filter(status='completed').count(),
+            'total_notes': today_notes.count(),
             'recent_entries': recent_entries,
-            'weekly_mood_avg': round(weekly_mood_avg, 1) if weekly_mood_avg else None,
         })
         
-        total_weekly_entries += weekly_entries
-        total_overall_entries += overall_entries
+        # Add to activity feed
+        recent_journal_entries.extend(recent_entries)
     
-    # Recent journal entries across all users under care
-    recent_journal_entries = JournalEntry.objects.filter(
-        user__in=autistic_users,
-        is_private=False
-    ).select_related('user').order_by('-created_at')[:5]
+    # Sort and limit recent activity
+    recent_journal_entries.sort(key=lambda x: x.created_at, reverse=True)
+    recent_journal_entries = recent_journal_entries[:10]
     
-    context = {
+    return render(request, 'caregiver/dashboard.html', {
         'autistic_users': autistic_users,
-        'recent_emotions': recent_emotions,
-        'care_relationships': care_relationships,
         'user_journal_stats': user_journal_stats,
         'total_weekly_entries': total_weekly_entries,
-        'total_overall_entries': total_overall_entries,
+        'total_notes': total_notes,
+        'total_notes_completed': total_notes_completed,
         'recent_journal_entries': recent_journal_entries,
-    }
-    return render(request, 'dashboards/caregiver_dashboard.html', context)
+    })
 
 @login_required
 def autistic_dashboard(request):
@@ -314,7 +309,7 @@ def emotion(request):
     else:
         # For anonymous users, try to get the first superuser or create default preferences
         default_user = CustomUser.objects.filter(is_superuser=True).first()
-        if default_user:
+        if (default_user):
             preferences, created = UserPreference.objects.get_or_create(user=default_user)
         else:
             # Create a minimal context without preferences
@@ -1655,16 +1650,15 @@ def caregiver_notes(request):
         if sort_by == 'date-asc':
             notes = notes.order_by('created_at')
         elif sort_by == 'priority':
-            # Custom ordering for priority
-            priority_order = Case(
-                When(priority='high', then=1),
-                When(priority='medium', then=2),
-                When(priority='low', then=3),
-                default=4,
-                output_field=IntegerField(),
-            )
+            # Custom ordering for priority using Case/When
             notes = notes.annotate(
-                priority_order=priority_order
+                priority_order=Case(
+                    When(priority='high', then=Value(1)),
+                    When(priority='medium', then=Value(2)),
+                    When(priority='low', then=Value(3)),
+                    default=Value(4),
+                    output_field=IntegerField(),
+                )
             ).order_by('priority_order', '-created_at')
     
     return render(request, 'caregiver/notes.html', {
@@ -1799,3 +1793,112 @@ def delete_caregiver_note(request, note_id):
         return JsonResponse({'error': 'Note not found'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
+
+@login_required
+def schedule_note_view(request):
+    """View for scheduling new notes"""
+    if request.user.role != 'caregiver':
+        messages.error(request, 'Access denied. Only caregivers can schedule notes.')
+        return redirect('dashboard')
+
+    # Get autistic users under care
+    care_relationships = CareRelationship.objects.filter(
+        caregiver=request.user,
+        is_active=True
+    ).select_related('autistic_person')
+    autistic_users = [rel.autistic_person for rel in care_relationships]
+
+    if request.method == 'POST':
+        form = ScheduledNoteForm(request.POST)
+        if form.is_valid():
+            note = form.save(commit=False)
+            note.caregiver = request.user
+            note.autistic_person_id = request.POST.get('autistic_person_id')
+            note.save()
+            
+            messages.success(request, 'Note scheduled successfully.')
+            return redirect('scheduled_notes_list')
+    else:
+        form = ScheduledNoteForm()
+
+    return render(request, 'caregiver/schedule_note.html', {
+        'form': form,
+        'autistic_users': autistic_users,
+    })
+
+@login_required
+def scheduled_notes_list_view(request):
+    """View for listing all scheduled notes"""
+    if request.user.role != 'caregiver':
+        messages.error(request, 'Access denied. Only caregivers can view scheduled notes.')
+        return redirect('dashboard')
+
+    # Get autistic users under care
+    care_relationships = CareRelationship.objects.filter(
+        caregiver=request.user,
+        is_active=True
+    ).select_related('autistic_person')
+    autistic_users = [rel.autistic_person for rel in care_relationships]
+
+    # Get all notes for these users
+    scheduled_notes = ScheduledNote.objects.filter(
+        caregiver=request.user
+    ).select_related('autistic_person').order_by('scheduled_time')
+
+    return render(request, 'caregiver/scheduled_notes_list.html', {
+        'scheduled_notes': scheduled_notes,
+        'autistic_users': autistic_users,
+    })
+
+@login_required
+@require_http_methods(['GET', 'POST'])
+def edit_scheduled_note(request, note_id):
+    """View for editing a scheduled note"""
+    note = get_object_or_404(ScheduledNote, id=note_id, caregiver=request.user)
+    
+    if request.method == 'GET':
+        # Return note details as JSON for the modal
+        return JsonResponse({
+            'id': note.id,
+            'title': note.title,
+            'content': note.content,
+            'scheduled_time': note.scheduled_time.isoformat(),
+            'priority': note.priority,
+        })
+    
+    elif request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            note.title = data['title']
+            note.content = data['content']
+            note.scheduled_time = datetime.fromisoformat(data['scheduled_time'])
+            note.priority = data['priority']
+            note.save()
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+@login_required
+@require_POST
+def complete_scheduled_note(request, note_id):
+    """Mark a scheduled note as completed"""
+    note = get_object_or_404(ScheduledNote, id=note_id, caregiver=request.user)
+    
+    if note.status != 'pending':
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Only pending notes can be marked as completed'
+        }, status=400)
+    
+    completion_notes = request.POST.get('completion_notes', '')
+    note.mark_completed(completion_notes)
+    
+    return JsonResponse({'status': 'success'})
+
+@login_required
+@require_POST
+def delete_scheduled_note(request, note_id):
+    """Delete a scheduled note"""
+    note = get_object_or_404(ScheduledNote, id=note_id, caregiver=request.user)
+    note.delete()
+    return JsonResponse({'status': 'success'})
