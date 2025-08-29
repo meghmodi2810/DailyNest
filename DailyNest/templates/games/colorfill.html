@@ -1,0 +1,531 @@
+{% extends 'base.html' %}
+
+{% block title %}Creative Color Fill - DailyNest{% endblock %}
+
+{% block content %}
+<div class="game-container">
+    <div class="game-header">
+        <h1><i class="fas fa-palette"></i> Creative Color Fill</h1>
+        <p>Create beautiful artwork by filling shapes with colors</p>
+        <div class="game-controls">
+            <a href="{% url 'games_dashboard' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Games
+            </a>
+            <button id="resetBtn" class="btn btn-warning">
+                <i class="fas fa-redo"></i> Reset Artwork
+            </button>
+            <button id="downloadBtn" class="btn btn-success">
+                <i class="fas fa-download"></i> Download Artwork
+            </button>
+        </div>
+    </div>
+
+    <div class="game-content">
+        <div class="side-panel" id="sidePanel">
+            <!-- Design thumbnails will be populated here -->
+        </div>
+        
+        <div class="main-canvas-area">
+            <canvas id="colorCanvas" width="500" height="500"></canvas>
+            
+            <div class="color-palette">
+                <h3>Color Palette</h3>
+                <div class="colors-grid">
+                    <div class="color" style="background:#a3d8f4" data-color="#a3d8f4"></div>
+                    <div class="color" style="background:#c3f0ca" data-color="#c3f0ca"></div>
+                    <div class="color" style="background:#f7d9d9" data-color="#f7d9d9"></div>
+                    <div class="color" style="background:#fde2e2" data-color="#fde2e2"></div>
+                    <div class="color" style="background:#e4d1ff" data-color="#e4d1ff"></div>
+                    <div class="color" style="background:#ffd6a5" data-color="#ffd6a5"></div>
+                    <div class="color" style="background:#fdffb6" data-color="#fdffb6"></div>
+                    <div class="color" style="background:#caffbf" data-color="#caffbf"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="message" class="success-message">
+        <i class="fas fa-star"></i> Well done! You've created something beautiful 🎨✨
+    </div>
+</div>
+
+<style>
+.game-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.game-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.game-header h1 {
+    color: var(--calm-blue);
+    margin-bottom: 10px;
+    font-size: 2.5rem;
+}
+
+.game-header p {
+    color: var(--text-light);
+    font-size: 1.1rem;
+    margin-bottom: 20px;
+}
+
+.game-controls {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.game-content {
+    display: flex;
+    gap: 30px;
+    align-items: flex-start;
+}
+
+.side-panel {
+    width: 200px;
+    background: var(--surface-light);
+    border-radius: var(--border-radius);
+    padding: 20px;
+    box-shadow: var(--shadow-md);
+    border: 1px solid rgba(0,0,0,0.1);
+}
+
+.thumbnail-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 15px;
+    transition: all 0.2s ease-in-out;
+}
+
+.thumbnail-container:hover {
+    background-color: rgba(99, 102, 241, 0.1);
+    transform: translateY(-2px);
+}
+
+.thumbnail-container.active {
+    border-color: var(--calm-blue);
+    background-color: rgba(99, 102, 241, 0.1);
+}
+
+.thumbnail-canvas {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: white;
+    margin-bottom: 8px;
+}
+
+.thumbnail-label {
+    font-size: 0.9em;
+    color: var(--text-light);
+    text-align: center;
+    font-weight: 500;
+}
+
+.main-canvas-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+#colorCanvas {
+    border: 3px solid var(--calm-blue);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-lg);
+    background: white;
+    cursor: crosshair;
+}
+
+.color-palette {
+    text-align: center;
+}
+
+.color-palette h3 {
+    color: var(--text-light);
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+}
+
+.colors-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+}
+
+.color {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 3px solid var(--surface-light);
+    box-shadow: var(--shadow-md);
+    transition: all 0.2s ease-in-out;
+}
+
+.color:hover {
+    transform: scale(1.1);
+    box-shadow: var(--shadow-lg);
+}
+
+.color.active {
+    border: 4px solid var(--calm-blue);
+    transform: scale(1.1);
+}
+
+.success-message {
+    text-align: center;
+    margin-top: 30px;
+    padding: 20px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    border-radius: var(--border-radius);
+    font-size: 1.2rem;
+    font-weight: 600;
+    display: none;
+    box-shadow: var(--shadow-md);
+}
+
+.success-message i {
+    margin-right: 10px;
+    color: #fbbf24;
+}
+
+@media (max-width: 1200px) {
+    .game-content {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .side-panel {
+        width: 100%;
+        max-width: 600px;
+        order: 2;
+    }
+    
+    .main-canvas-area {
+        order: 1;
+    }
+}
+
+@media (max-width: 768px) {
+    #colorCanvas {
+        width: 350px;
+        height: 350px;
+    }
+    
+    .game-controls {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .colors-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+    }
+    
+    .color {
+        width: 40px;
+        height: 40px;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const canvas = document.getElementById("colorCanvas");
+    const ctx = canvas.getContext("2d");
+    const colors = document.querySelectorAll(".color");
+    const message = document.getElementById("message");
+    const downloadBtn = document.getElementById("downloadBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const sidePanel = document.getElementById("sidePanel");
+
+    let activeColor = "#a3d8f4";
+    let regions = [];
+    let currentDesignId = "mandala";
+
+    const designs = {
+        mandala: {
+            name: "Mandala",
+            getPaths: () => {
+                const paths = [];
+                
+                // Central circle
+                const center = new Path2D();
+                center.arc(250, 250, 40, 0, Math.PI * 2);
+                paths.push(center);
+                
+                // Outer circles
+                for (let i = 1; i <= 4; i++) {
+                    const outer = new Path2D();
+                    outer.arc(250, 250, 80 * i, 0, Math.PI * 2);
+                    paths.push(outer);
+                }
+                
+                // Petals
+                for (let i = 0; i < 8; i++) {
+                    const petal = new Path2D();
+                    const angle = (i * Math.PI) / 4;
+                    const x = 250 + Math.cos(angle) * 120;
+                    const y = 250 + Math.sin(angle) * 120;
+                    petal.arc(x, y, 30, 0, Math.PI * 2);
+                    paths.push(petal);
+                }
+                
+                return paths;
+            }
+        },
+        star: {
+            name: "Cartoon Star",
+            getPaths: () => {
+                const path = new Path2D();
+                const centerX = 250, centerY = 250;
+                const outerRadius = 120, innerRadius = 60;
+                const points = 5;
+                
+                for (let i = 0; i < points * 2; i++) {
+                    const angle = (i * Math.PI) / points;
+                    const radius = i % 2 === 0 ? outerRadius : innerRadius;
+                    const x = centerX + Math.cos(angle) * radius;
+                    const y = centerY + Math.sin(angle) * radius;
+                    
+                    if (i === 0) {
+                        path.moveTo(x, y);
+                    } else {
+                        path.lineTo(x, y);
+                    }
+                }
+                path.closePath();
+                return [path];
+            }
+        },
+        sun: {
+            name: "Happy Sun",
+            getPaths: () => {
+                const paths = [];
+                
+                // Main sun circle
+                const main = new Path2D();
+                main.arc(250, 250, 80, 0, Math.PI * 2);
+                paths.push(main);
+                
+                // Sun rays
+                for (let i = 0; i < 12; i++) {
+                    const ray = new Path2D();
+                    const angle = (i * Math.PI) / 6;
+                    const startX = 250 + Math.cos(angle) * 80;
+                    const startY = 250 + Math.sin(angle) * 80;
+                    const endX = 250 + Math.cos(angle) * 140;
+                    const endY = 250 + Math.sin(angle) * 140;
+                    
+                    ray.moveTo(startX, startY);
+                    ray.lineTo(endX, endY);
+                    paths.push(ray);
+                }
+                
+                return paths;
+            }
+        },
+        house: {
+            name: "Little House",
+            getPaths: () => {
+                const paths = [];
+                
+                // House body
+                const body = new Path2D();
+                body.rect(150, 200, 200, 150);
+                paths.push(body);
+                
+                // Roof
+                const roof = new Path2D();
+                roof.moveTo(150, 200);
+                roof.lineTo(250, 100);
+                roof.lineTo(350, 200);
+                roof.closePath();
+                paths.push(roof);
+                
+                // Door
+                const door = new Path2D();
+                door.rect(220, 280, 60, 70);
+                paths.push(door);
+                
+                // Windows
+                const window1 = new Path2D();
+                window1.rect(170, 220, 40, 40);
+                paths.push(window1);
+                
+                const window2 = new Path2D();
+                window2.rect(290, 220, 40, 40);
+                paths.push(window2);
+                
+                return paths;
+            }
+        },
+        cloud: {
+            name: "Puffy Cloud",
+            getPaths: () => {
+                const paths = [];
+                
+                // Main cloud body
+                const main = new Path2D();
+                main.arc(200, 250, 60, 0, Math.PI * 2);
+                main.arc(300, 250, 70, 0, Math.PI * 2);
+                main.arc(250, 200, 80, 0, Math.PI * 2);
+                paths.push(main);
+                
+                // Small cloud details
+                const detail1 = new Path2D();
+                detail1.arc(180, 220, 25, 0, Math.PI * 2);
+                paths.push(detail1);
+                
+                const detail2 = new Path2D();
+                detail2.arc(320, 220, 25, 0, Math.PI * 2);
+                paths.push(detail2);
+                
+                return paths;
+            }
+        }
+    };
+    
+    // Renders all regions on a given canvas context
+    function drawAllRegions(regionArray, targetCtx, scale = 1) {
+        targetCtx.clearRect(0, 0, targetCtx.canvas.width, targetCtx.canvas.height);
+        
+        regionArray.forEach(region => {
+            if (region.path) {
+                const scaledPath = new Path2D();
+                const matrix = new DOMMatrix().scale(scale, scale);
+                scaledPath.addPath(region.path, matrix);
+
+                targetCtx.fillStyle = region.color || "#ffffff";
+                targetCtx.strokeStyle = "#444";
+                targetCtx.lineWidth = 2;
+                targetCtx.globalAlpha = region.color ? 0.9 : 1;
+                targetCtx.fill(scaledPath);
+                targetCtx.stroke(scaledPath);
+            }
+        });
+        targetCtx.globalAlpha = 1;
+    }
+
+    // Initializes the regions and draws the main canvas
+    function switchDesign(designId) {
+        currentDesignId = designId;
+        const paths = designs[currentDesignId].getPaths();
+        regions = paths.map(p => ({
+            path: p,
+            color: null
+        }));
+        
+        drawAllRegions(regions, ctx);
+
+        document.querySelectorAll('.thumbnail-container').forEach(el => {
+            el.classList.remove('active');
+            if (el.dataset.design === designId) {
+                el.classList.add('active');
+            }
+        });
+    }
+
+    // Creates and draws the thumbnail previews
+    function createThumbnails() {
+        for (const designId in designs) {
+            const design = designs[designId];
+            const container = document.createElement('div');
+            container.className = 'thumbnail-container';
+            container.dataset.design = designId;
+            
+            const thumbCanvas = document.createElement('canvas');
+            thumbCanvas.className = 'thumbnail-canvas';
+            thumbCanvas.width = 120;
+            thumbCanvas.height = 120;
+            
+            const label = document.createElement('div');
+            label.className = 'thumbnail-label';
+            label.textContent = design.name;
+            
+            container.appendChild(thumbCanvas);
+            container.appendChild(label);
+            sidePanel.appendChild(container);
+            
+            const thumbCtx = thumbCanvas.getContext('2d');
+            const thumbPaths = designs[designId].getPaths().map(p => ({path: p, color: null}));
+            drawAllRegions(thumbPaths, thumbCtx, thumbCanvas.width / 500);
+            
+            container.addEventListener('click', () => {
+                switchDesign(designId);
+            });
+        }
+    }
+
+    // Initialize the game
+    createThumbnails();
+    switchDesign(currentDesignId);
+    
+    // Color selection
+    colors.forEach(c => {
+        c.addEventListener("click", () => {
+            activeColor = c.dataset.color;
+            colors.forEach(el => el.classList.remove('active'));
+            c.classList.add('active');
+        });
+    });
+    colors[0].classList.add('active');
+
+    // Canvas click handling with improved hit detection
+    canvas.addEventListener("click", (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        let clicked = false;
+        regions.forEach((region, index) => {
+            if (region.path && ctx.isPointInPath(region.path, x, y)) {
+                region.color = activeColor;
+                clicked = true;
+            }
+        });
+        
+        if (clicked) {
+            drawAllRegions(regions, ctx);
+            // Play a subtle sound effect (optional)
+            if (typeof Audio !== 'undefined') {
+                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT');
+                audio.volume = 0.3;
+                audio.play().catch(() => {}); // Ignore errors if audio fails
+            }
+        }
+    });
+
+    // Reset functionality
+    resetBtn.addEventListener('click', () => {
+        regions.forEach(region => region.color = null);
+        drawAllRegions(regions, ctx);
+    });
+
+    // Download functionality
+    downloadBtn.addEventListener('click', () => {
+        const link = document.createElement("a");
+        link.download = `colorfill-${currentDesignId}-${new Date().toISOString().slice(0,10)}.png`;
+        link.href = canvas.toDataURL();
+        link.click();
+    });
+
+    // Show success message after 2 minutes
+    setTimeout(() => {
+        message.style.display = "block";
+    }, 120000);
+});
+</script>
+{% endblock %}

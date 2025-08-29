@@ -962,6 +962,22 @@ def games_dashboard(request):
                 'icon': 'fas fa-wind',
                 'color': 'var(--soothing-teal)',
                 'difficulty': 'Easy'
+            },
+            {
+                'id': 'colorfill',
+                'name': 'Creative Color Fill',
+                'description': 'Create beautiful artwork by filling shapes with colors',
+                'icon': 'fas fa-palette',
+                'color': 'var(--warm-orange)',
+                'difficulty': 'Easy'
+            },
+            {
+                'id': 'memory_match',
+                'name': 'Happy Memory Match',
+                'description': 'Match pairs of happy emojis to improve memory',
+                'icon': 'fas fa-brain',
+                'color': 'var(--gentle-purple)',
+                'difficulty': 'Medium'
             }
         ]
     }
@@ -992,6 +1008,8 @@ def play_game(request, game_type):
         'guess_the_bowl': 'games/guess_the_bowl.html',
         'bubble_pop': 'games/bubble_pop.html',
         'breathing_exercise': 'games/breathing_exercise.html',
+        'colorfill': 'games/colorfill.html',
+        'memory_match': 'games/memory_match.html',
     }
     
     template_name = game_templates.get(game_type, 'games/default_game.html')

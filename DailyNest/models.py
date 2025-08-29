@@ -336,6 +336,8 @@ class GameProgress(models.Model):
         ('guess_the_bowl', 'Guess The Bowl'),
         ('bubble_pop', 'Bubble Pop'),
         ('breathing_exercise', 'Breathing Exercise'),
+        ('colorfill', 'Creative Color Fill'),
+        ('memory_match', 'Happy Memory Match'),
     ]
     
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='game_progress')

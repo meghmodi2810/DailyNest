@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Happy Memory Match</title>
+<style>
+    body {
+        font-family: 'Comic Sans MS', 'Arial Rounded MT', sans-serif;
+        background: linear-gradient(135deg, #93c5fd, #a7f3d0);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+    }
+
+    .container {
+        text-align: center;
+        width: 100%;
+        max-width: 1000px;
+    }
+
+    /* 🎮 Menu Screen Styling */
+    #levelScreen h1 {
+        font-size: 4rem; /* bigger title */
+        color: #1e3a8a;
+        margin-bottom: 20px;
+        text-shadow: 3px 3px #93c5fd;
+        animation: pulse 2s infinite;
+    }
+
+    #levelScreen p {
+        font-size: 1.8rem; /* bigger subtitle */
+        margin-bottom: 30px;
+        color: #111;
+    }
+
+    #levelScreen .btn {
+        padding: 20px 40px; /* bigger buttons */
+        font-size: 1.8rem;
+        border-radius: 18px;
+    }
+
+    /* General Screens */
+    .screen {
+        display: none;
+        animation: fadeIn 0.6s ease-in-out;
+    }
+    .active {
+        display: block;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+
+    .btn {
+        padding: 14px 28px;
+        font-size: 1.2rem;
+        margin: 10px;
+        cursor: pointer;
+        border: none;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: white;
+        box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+        transition: 0.3s;
+    }
+    .btn:hover {
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        transform: scale(1.08);
+    }
+
+    .back-btn {
+        background: linear-gradient(135deg, #34d399, #059669);
+    }
+    .back-btn:hover {
+        background: linear-gradient(135deg, #059669, #047857);
+    }
+
+    .game-board {
+        display: grid;
+        gap: 12px;
+        justify-content: center;
+        margin-top: 20px;
+    }
+
+    .card {
+        width: 95px;
+        height: 120px;
+        background: white;
+        border-radius: 16px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 34px;
+        cursor: pointer;
+        box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+        user-select: none;
+        transition: transform 0.25s, background 0.25s;
+    }
+    .card:hover { transform: scale(1.07); }
+    .card.open { background: #fde68a; }
+    .card.matched { background: #86efac; }
+
+    .controls {
+        margin: 15px;
+    }
+
+    #message {
+        margin-top: 15px;
+        font-size: 1.4rem;
+        color: #065f46;
+        font-weight: bold;
+        min-height: 28px;
+    }
+
+    /* Popup styles */
+    #popup {
+        display: none;
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: rgba(0,0,0,0.7);
+        justify-content: center;
+        align-items: center;
+    }
+    #popup-content {
+        background: white;
+        padding: 30px;
+        border-radius: 16px;
+        text-align: center;
+        box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        animation: fadeIn 0.5s ease-in-out;
+    }
+    #popup-content h2 {
+        font-size: 2rem;
+        margin-bottom: 15px;
+        color: #1e3a8a;
+    }
+    #popup-content p {
+        font-size: 1.2rem;
+        margin-bottom: 20px;
+        color: #111;
+    }
+</style>
+</head>
+<body>
+<div class="container">
+    <!-- Level Selection Screen -->
+    <div id="levelScreen" class="screen active">
+        <h1>😊 Happy Memory Match 🎴</h1>
+        <p>Select a level to start playing</p>
+        <button class="btn" onclick="startGame('easy')">Easy</button>
+        <button class="btn" onclick="startGame('medium')">Medium</button>
+        <button class="btn" onclick="startGame('hard')">Hard</button>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="gameScreen" class="screen">
+        <h1>Find the Happy Pairs 🎉</h1>
+        <div class="controls">
+            <button class="btn" onclick="useHint()">💡 Hint</button>
+            <button class="btn" onclick="resetGame()">🔄 Play Again</button>
+            <button class="btn back-btn" onclick="goBack()">🔙 Back</button>
+        </div>
+        <div id="board" class="game-board"></div>
+        <div id="message"></div>
+    </div>
+</div>
+
+<!-- Popup -->
+<div id="popup">
+    <div id="popup-content">
+        <h2>🎉 Congratulations! 🎉</h2>
+        <p id="popup-message">You matched all pairs!</p>
+        <button class="btn" onclick="resetGame(); closePopup();">🔄 Play Again</button>
+        <button class="btn back-btn" onclick="closePopup(); goBack();">🏠 Menu</button>
+    </div>
+</div>
+
+<!-- Music & Sounds -->
+<audio id="bgMusic" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_43fa9304c5.mp3?filename=fun-game-loop-113985.mp3" loop></audio>
+<audio id="flipSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_f92a46b75c.mp3?filename=button-press-113736.mp3"></audio>
+<audio id="matchSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_58f7f88352.mp3?filename=collect-coin-113970.mp3"></audio>
+
+<script>
+    const emojis = ["😀","😁","😂","🤣","😊","😍","😎","🤩","🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯","🐵","🐸"];
+    let firstCard = null, secondCard = null, lockBoard = false, matches = 0, totalPairs = 0;
+    let currentCols = 0, currentRows = 0;
+
+    const bgMusic = document.getElementById("bgMusic");
+    const flipSound = document.getElementById("flipSound");
+    const matchSound = document.getElementById("matchSound");
+
+    const encouragingMessages = [
+        "🌟 Great job!",
+        "👏 Awesome!",
+        "🔥 Keep going!",
+        "💯 You're doing amazing!",
+        "😁 Nice match!",
+        "🎉 Fantastic!"
+    ];
+
+    function startGame(level) {
+        document.getElementById("levelScreen").classList.remove("active");
+        document.getElementById("gameScreen").classList.add("active");
+
+        let pairs = 6;
+        if(level === "easy") { pairs = 6; currentCols = 4; currentRows = 3; }
+        if(level === "medium") { pairs = 8; currentCols = 4; currentRows = 4; }
+        if(level === "hard") { pairs = 10; currentCols = 5; currentRows = 4; }
+
+        totalPairs = pairs;
+        setupBoard(pairs, currentCols, currentRows);
+
+        bgMusic.currentTime = 0;
+        bgMusic.play();
+    }
+
+    function setupBoard(pairs, cols, rows) {
+        const board = document.getElementById("board");
+        board.innerHTML = "";
+        matches = 0;
+
+        const selected = emojis.slice(0, pairs);
+        const gameEmojis = [...selected, ...selected].sort(() => 0.5 - Math.random());
+
+        board.style.gridTemplateColumns = `repeat(${cols}, 95px)`;
+
+        gameEmojis.forEach((emoji) => {
+            const card = document.createElement("div");
+            card.classList.add("card");
+            card.dataset.emoji = emoji;
+            card.innerHTML = "🎴";
+            card.onclick = () => flipCard(card);
+            board.appendChild(card);
+        });
+    }
+
+    function flipCard(card) {
+        if (lockBoard || card.classList.contains("open") || card.classList.contains("matched")) return;
+
+        flipSound.play();
+        card.classList.add("open");
+        card.innerHTML = card.dataset.emoji;
+
+        if (!firstCard) {
+            firstCard = card;
+        } else {
+            secondCard = card;
+            lockBoard = true;
+
+            if (firstCard.dataset.emoji === secondCard.dataset.emoji) {
+                matchSound.play();
+                firstCard.classList.add("matched");
+                secondCard.classList.add("matched");
+                matches++;
+
+                const msg = encouragingMessages[Math.floor(Math.random() * encouragingMessages.length)];
+                document.getElementById("message").innerText = msg;
+
+                resetTurn();
+                if (matches === totalPairs) {
+                    endGame();
+                }
+            } else {
+                setTimeout(() => {
+                    firstCard.classList.remove("open");
+                    firstCard.innerHTML = "🎴";
+                    secondCard.classList.remove("open");
+                    secondCard.innerHTML = "🎴";
+                    resetTurn();
+                }, 900);
+            }
+        }
+    }
+
+    function resetTurn() {
+        [firstCard, secondCard, lockBoard] = [null, null, false];
+    }
+
+    function resetGame() {
+        document.getElementById("message").innerText = "";
+        setupBoard(totalPairs, currentCols, currentRows);
+        bgMusic.currentTime = 0;
+        bgMusic.play();
+    }
+
+    function goBack() {
+        document.getElementById("levelScreen").classList.add("active");
+        document.getElementById("gameScreen").classList.remove("active");
+        document.getElementById("message").innerText = "";
+        bgMusic.pause();
+    }
+
+    function useHint() {
+        if (lockBoard) return;
+        const cards = [...document.querySelectorAll(".card:not(.matched):not(.open)")];
+        if (cards.length === 0) return;
+        const randomCard = cards[Math.floor(Math.random() * cards.length)];
+
+        flipSound.play();
+        randomCard.classList.add("open");
+        randomCard.innerHTML = randomCard.dataset.emoji;
+
+        setTimeout(() => {
+            if (!randomCard.classList.contains("matched")) {
+                randomCard.classList.remove("open");
+                randomCard.innerHTML = "🎴";
+            }
+        }, 1000);
+    }
+
+    function endGame() {
+        bgMusic.pause();
+        const popup = document.getElementById("popup");
+        const msg = encouragingMessages[Math.floor(Math.random() * encouragingMessages.length)];
+        document.getElementById("popup-message").innerText = msg + " 🎉 You matched all pairs!";
+        popup.style.display = "flex";
+    }
+
+    function closePopup() {
+        document.getElementById("popup").style.display = "none";
+    }
+</script>
+</body>
+</html>
