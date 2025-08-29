@@ -473,28 +473,6 @@
             transform: none;
         }
 
-        /* Floating Action Button */
-        .fab {
-            position: fixed;
-            bottom: 2rem;
-            right: 2rem;
-            width: 64px;
-            height: 64px;
-            background: var(--primary-gradient);
-            border: none;
-            border-radius: 50%;
-            color: white;
-            font-size: 1.5rem;
-            cursor: pointer;
-            box-shadow: var(--shadow-lg);
-            transition: var(--transition);
-            z-index: 100;
-        }
-
-        .fab:hover {
-            transform: scale(1.1) rotate(15deg);
-            box-shadow: var(--shadow-xl);
-        }
 
         /* Animations */
         @keyframes fadeInUp {
@@ -707,10 +685,6 @@
         </div>
     </main>
 
-    <!-- Floating Action Button -->
-    <button class="fab" id="helpBtn" aria-label="Get Help">
-        <i class="fas fa-question"></i>
-    </button>
 
     <!-- JavaScript -->
     <script>
@@ -819,13 +793,6 @@
             return cookieValue;
         }
 
-        // Help button
-        const helpBtn = document.getElementById('helpBtn');
-        if (helpBtn) {
-            helpBtn.addEventListener('click', () => {
-                alert('Welcome to DailyNest! This is your personal emotion-aware assistant. Use the navigation to explore emotions detection and chat features. Adjust accessibility settings using the settings button.');
-            });
-        }
 
         // Add animation classes to elements
         document.addEventListener('DOMContentLoaded', () => {

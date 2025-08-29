@@ -1,0 +1,836 @@
+{% extends 'base.html' %}
+
+{% block title %}Daily Journal - DailyNest{% endblock %}
+
+{% block content %}
+<div class="journal-container">
+    <div class="journal-header">
+        <h1><i class="fas fa-microphone"></i> Daily Journal</h1>
+        <p>Share your thoughts and feelings about today using your voice</p>
+    </div>
+
+    {% if messages %}
+        <div class="messages-container">
+            {% for message in messages %}
+                <div class="message-alert success">
+                    <i class="fas fa-check-circle"></i>
+                    {{ message }}
+                    <button class="message-close" onclick="this.parentElement.remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="journal-form-container">
+        <form id="journalForm" method="post" enctype="multipart/form-data" class="journal-form">
+            {% csrf_token %}
+            
+            <!-- Voice Recording Section -->
+            <div class="form-section">
+                <div class="section-header">
+                    <h3><i class="fas fa-microphone-alt"></i> Voice Recording</h3>
+                    <p>Record your thoughts about today. We'll transcribe it for you!</p>
+                </div>
+                <div class="recording-area">
+                    <div class="recording-controls">
+                        <button type="button" id="startRecording" class="btn btn-record">
+                            <i class="fas fa-microphone"></i>
+                            <span>Start Recording</span>
+                        </button>
+                        <button type="button" id="stopRecording" class="btn btn-stop" disabled>
+                            <i class="fas fa-stop"></i>
+                            <span>Stop Recording</span>
+                        </button>
+                        <button type="button" id="playRecording" class="btn btn-play" disabled>
+                            <i class="fas fa-play"></i>
+                            <span>Play Back</span>
+                        </button>
+                    </div>
+                    
+                    <div class="recording-status" id="recordingStatus">
+                        <div class="status-indicator">
+                            <i class="fas fa-microphone-slash"></i>
+                            <span>Ready to record</span>
+                        </div>
+                        <div class="recording-timer" id="recordingTimer">00:00</div>
+                    </div>
+                    
+                    <div class="audio-visualizer" id="audioVisualizer">
+                        <div class="visualizer-bars">
+                            <div class="bar"></div>
+                            <div class="bar"></div>
+                            <div class="bar"></div>
+                            <div class="bar"></div>
+                            <div class="bar"></div>
+                        </div>
+                    </div>
+                    
+                    <audio id="audioPlayback" controls style="display: none;"></audio>
+                    <input type="file" id="audioFile" name="audio_file" accept="audio/*" style="display: none;">
+                </div>
+            </div>
+
+            <!-- Manual Entry Section -->
+            <div class="form-section">
+                <div class="section-header">
+                    <h3><i class="fas fa-microphone"></i> Voice Journal Entry</h3>
+                    <div class="form-description">
+                        <p>Record your daily thoughts and feelings using your voice</p>
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label for="title" class="form-label">
+                            <i class="fas fa-heading"></i>Title (Optional)
+                        </label>
+                        <input type="text" id="title" name="title" class="form-input" placeholder="Give your journal entry a title...">
+                    </div>
+                    
+                    <div class="transcription-section">
+                        <label class="form-label">
+                            <i class="fas fa-microphone"></i>
+                            Voice Transcription (Auto-generated)
+                        </label>
+                        <div class="transcription-display" id="transcriptionDisplay">
+                            <p class="transcription-placeholder">Your voice will be transcribed here automatically...</p>
+                        </div>
+                        <input type="hidden" id="transcription" name="content" />
+                    </div>
+                    
+                    
+                    <div class="form-group">
+                        <label for="mood_rating" class="form-label">
+                            <i class="fas fa-smile"></i>How are you feeling?
+                        </label>
+                        <select id="mood_rating" name="mood_rating" class="form-select">
+                            <option value="">Choose your mood...</option>
+                            <option value="1">😢 Very Sad</option>
+                            <option value="2">😔 Sad</option>
+                            <option value="3">😐 Neutral</option>
+                            <option value="4">😊 Happy</option>
+                            <option value="5">😄 Very Happy</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="checkbox-wrapper">
+                            <input type="checkbox" id="is_private" name="is_private">
+                            <label for="is_private" class="checkbox-label">
+                                <i class="fas fa-lock"></i>Keep this entry private
+                            </label>
+                        </div>
+                        <div class="help-text">
+                            <span>Private entries won't be visible to your caregivers</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary" id="saveJournal">
+                    <i class="fas fa-save"></i>
+                    <span>Save Journal Entry</span>
+                </button>
+                <a href="{% url 'dashboard' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Back to Dashboard</span>
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+:root {
+    --primary-color: #6366f1;
+    --primary-dark: #4f46e5;
+    --secondary-color: #8b5cf6;
+    --accent-color: #06b6d4;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --text-muted: #9ca3af;
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8fafc;
+    --bg-tertiary: #f1f5f9;
+    --border-color: #e2e8f0;
+    --border-focus: #6366f1;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+.journal-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+    min-height: calc(100vh - 80px);
+}
+
+.journal-header {
+    background: var(--bg-primary);
+    border-radius: var(--radius-xl);
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow-lg);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.journal-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color), var(--accent-color));
+}
+
+.journal-header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem 0;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+}
+
+.journal-header p {
+    color: var(--text-secondary);
+    margin: 0;
+    font-size: 1.125rem;
+}
+
+.messages-container {
+    margin-bottom: 2rem;
+}
+
+.message-alert {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 1rem;
+    position: relative;
+}
+
+.message-alert.success {
+    border-left: 4px solid var(--success-color);
+    background: linear-gradient(135deg, #ecfdf5, #f0fdf4);
+}
+
+.message-alert i:first-child {
+    color: var(--success-color);
+    font-size: 1.25rem;
+}
+
+.message-close {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+}
+
+.message-close:hover {
+    color: var(--text-secondary);
+    background: var(--bg-tertiary);
+}
+
+.journal-form-container {
+    background: var(--bg-primary);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+}
+
+.journal-form {
+    padding: 0;
+}
+
+.form-section {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.form-section:last-of-type {
+    border-bottom: none;
+}
+
+.section-header {
+    background: var(--bg-secondary);
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.section-header h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.section-header i {
+    color: var(--primary-color);
+    font-size: 1.125rem;
+}
+
+.section-header p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+.recording-area {
+    padding: 2rem;
+    text-align: center;
+}
+
+.recording-controls {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: var(--transition);
+    text-decoration: none;
+}
+
+.btn-record {
+    background: var(--danger-color);
+    color: white;
+}
+
+.btn-record:hover:not(:disabled) {
+    background: #dc2626;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-stop {
+    background: var(--text-secondary);
+    color: white;
+}
+
+.btn-stop:hover:not(:disabled) {
+    background: var(--text-primary);
+}
+
+.btn-play {
+    background: var(--success-color);
+    color: white;
+}
+
+.btn-play:hover:not(:disabled) {
+    background: #059669;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.recording-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-lg);
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+}
+
+.status-indicator.recording {
+    color: var(--danger-color);
+}
+
+.recording-timer {
+    font-family: 'Courier New', monospace;
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: var(--text-primary);
+}
+
+.audio-visualizer {
+    margin: 2rem 0;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.visualizer-bars {
+    display: flex;
+    gap: 4px;
+    align-items: end;
+    height: 40px;
+}
+
+.bar {
+    width: 6px;
+    background: var(--primary-color);
+    border-radius: 3px;
+    transition: height 0.1s ease;
+    height: 10px;
+}
+
+.bar.active {
+    animation: pulse 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+    from { height: 10px; }
+    to { height: 40px; }
+}
+
+.form-grid {
+    padding: 2rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.form-label {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.form-label i {
+    color: var(--primary-color);
+    font-size: 1rem;
+}
+
+.form-input, .form-textarea, .form-select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+    transition: var(--transition);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 120px;
+}
+
+.form-input:focus, .form-textarea:focus, .form-select:focus {
+    outline: none;
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.checkbox-label {
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    cursor: pointer;
+}
+
+.checkbox-label i {
+    color: var(--primary-color);
+    font-size: 1rem;
+}
+
+input[type="checkbox"] {
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+.transcription-display {
+    background: var(--surface-color);
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    min-height: 120px;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--text-color);
+    cursor: not-allowed;
+    user-select: none;
+}
+
+.transcription-placeholder {
+    color: var(--text-muted);
+    font-style: italic;
+    margin: 0;
+}
+
+.transcription-display p {
+    color: var(--text-color) !important;
+    font-style: normal !important;
+    margin: 0 !important;
+    font-weight: 500;
+}
+
+.help-text {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+    font-style: italic;
+}
+
+.transcription-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    color: var(--primary-color);
+    font-size: 0.875rem;
+}
+
+.form-actions {
+    padding: 2rem;
+    background: var(--bg-secondary);
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-secondary {
+    background: var(--text-secondary);
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: var(--text-primary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+@media (max-width: 768px) {
+    .journal-container {
+        padding: 1rem;
+    }
+    
+    .journal-header {
+        padding: 1.5rem 1rem;
+    }
+    
+    .journal-header h1 {
+        font-size: 1.5rem;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .recording-controls {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+        padding: 1rem;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+        padding: 1rem;
+    }
+    
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.journal-header, .journal-form-container {
+    animation: fadeInUp 0.6s ease-out;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let mediaRecorder;
+    let audioChunks = [];
+    let isRecording = false;
+    let recordingTimer;
+    let startTime;
+    
+    const startBtn = document.getElementById('startRecording');
+    const stopBtn = document.getElementById('stopRecording');
+    const playBtn = document.getElementById('playRecording');
+    const audioPlayback = document.getElementById('audioPlayback');
+    const audioFileInput = document.getElementById('audioFile');
+    const statusIndicator = document.querySelector('.status-indicator');
+    const timerDisplay = document.getElementById('recordingTimer');
+    const transcriptionStatus = document.getElementById('transcriptionStatus');
+    const visualizerBars = document.querySelectorAll('.bar');
+    
+    // Request microphone permission
+    async function initializeRecording() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            
+            mediaRecorder.ondataavailable = event => {
+                audioChunks.push(event.data);
+            };
+            
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                audioPlayback.src = audioUrl;
+                audioPlayback.style.display = 'block';
+                playBtn.disabled = false;
+                
+                // Create file for upload
+                const file = new File([audioBlob], 'journal_recording.wav', { type: 'audio/wav' });
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                audioFileInput.files = dataTransfer.files;
+                
+                // Start transcription
+                transcribeAudio(audioBlob);
+            };
+            
+        } catch (error) {
+            console.error('Error accessing microphone:', error);
+            alert('Unable to access microphone. Please check permissions.');
+        }
+    }
+    
+    function startRecording() {
+        if (!mediaRecorder) {
+            initializeRecording().then(() => {
+                if (mediaRecorder) startRecording();
+            });
+            return;
+        }
+        
+        audioChunks = [];
+        mediaRecorder.start();
+        isRecording = true;
+        startTime = Date.now();
+        
+        // Auto-stop recording after 5 minutes (300 seconds)
+        setTimeout(() => {
+            if (isRecording) {
+                stopRecording();
+                alert('Recording stopped automatically after 5 minutes maximum duration.');
+            }
+        }, 300000); // 5 minutes = 300,000 milliseconds
+        
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        playBtn.disabled = true;
+        
+        statusIndicator.innerHTML = '<i class="fas fa-microphone"></i><span>Recording...</span>';
+        statusIndicator.classList.add('recording');
+        
+        // Start timer
+        recordingTimer = setInterval(updateTimer, 1000);
+        
+        // Start visualizer animation
+        visualizerBars.forEach(bar => bar.classList.add('active'));
+    }
+    
+    function stopRecording() {
+        if (mediaRecorder && isRecording) {
+            mediaRecorder.stop();
+            isRecording = false;
+            
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            
+            statusIndicator.innerHTML = '<i class="fas fa-check"></i><span>Recording complete</span>';
+            statusIndicator.classList.remove('recording');
+            
+            clearInterval(recordingTimer);
+            
+            // Stop visualizer animation
+            visualizerBars.forEach(bar => bar.classList.remove('active'));
+        }
+    }
+    
+    function updateTimer() {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const minutes = Math.floor(elapsed / 60);
+        const seconds = elapsed % 60;
+        timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    
+    async function transcribeAudio(audioBlob) {
+        transcriptionStatus.style.display = 'flex';
+        
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'recording.wav');
+        
+        try {
+            const response = await fetch('{% url "transcribe_audio" %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                const transcriptionDisplay = document.getElementById('transcriptionDisplay');
+                const transcriptionInput = document.getElementById('transcription');
+                
+                console.log('Transcription received:', data.transcription);
+                // Replace the placeholder with the actual transcription
+                if (data.transcription && data.transcription.trim()) {
+                    transcriptionDisplay.innerHTML = `<p style="color: #333; font-style: normal; margin: 0; font-weight: 500; padding: 1rem; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #007bff;">${data.transcription}</p>`;
+                    transcriptionInput.value = data.transcription;
+                    
+                    // Also update the main content field for form submission
+                    const contentField = document.querySelector('input[name="content"]');
+                    if (contentField) {
+                        contentField.value = data.transcription;
+                    }
+                } else {
+                    transcriptionDisplay.innerHTML = `<p style="color: #dc3545; font-style: italic; margin: 0;">No transcription available</p>`;
+                }
+                
+                transcriptionStatus.innerHTML = `
+                    <i class="fas fa-check"></i>
+                    <span>Transcription complete</span>
+                `;
+                setTimeout(() => {
+                    transcriptionStatus.style.display = 'none';
+                }, 3000);
+            } else {
+                transcriptionStatus.innerHTML = `
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>Transcription failed. You can type your entry manually.</span>
+                `;
+            }
+        } catch (error) {
+            console.error('Transcription error:', error);
+            transcriptionStatus.innerHTML = `
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>Transcription failed. You can type your entry manually.</span>
+            `;
+        }
+    }
+    
+    // Event listeners
+    startBtn.addEventListener('click', startRecording);
+    stopBtn.addEventListener('click', stopRecording);
+    
+    playBtn.addEventListener('click', () => {
+        audioPlayback.play();
+    });
+    
+    // Initialize on page load
+    initializeRecording();
+});
+</script>
+{% endblock %}

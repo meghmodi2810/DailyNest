@@ -42,6 +42,11 @@ urlpatterns = [
     path('chat-message/', views.chat_message, name='chat_message'),
     path('update-preferences/', views.update_preferences, name='update_preferences'),
     path('emotion-history/', views.emotion_history, name='emotion_history'),
+    path('journal/', views.daily_journal, name='daily_journal'),
+    path('journal/list/', views.journal_list, name='journal_list'),
+    path('journal/<int:journal_id>/', views.journal_detail, name='journal_detail'),
+    path('journal/<int:journal_id>/delete/', views.delete_journal_entry, name='delete_journal_entry'),
+    path('transcribe-audio/', views.transcribe_audio, name='transcribe_audio'),
     path('clear-chat/', views.clear_chat, name='clear_chat'),
     
     # Game URLs

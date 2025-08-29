@@ -108,12 +108,12 @@ class UserPreference(models.Model):
     
     EMOTION_CHECK_INTERVALS = [
         (0, 'Disabled'),
-        (-2, 'Every login'),
         (3, 'Every 3 hours'),
         (6, 'Every 6 hours'),
         (12, 'Every 12 hours'),
         (24, 'Daily'),
         (-1, 'Morning only (8-10 AM)'),
+        (-2, 'Every login'),
     ]
     
     user = models.OneToOneField('CustomUser', on_delete=models.CASCADE, related_name='preferences')
@@ -127,14 +127,14 @@ class UserPreference(models.Model):
         default=24,
         help_text="How often to prompt for emotion check"
     )
+    skip_emotion_checks = models.BooleanField(
+        default=False,
+        help_text="Skip automatic emotion checks"
+    )
     last_emotion_check = models.DateTimeField(
         null=True, 
         blank=True,
         help_text="Last time emotion was checked"
-    )
-    skip_emotion_checks = models.BooleanField(
-        default=False,
-        help_text="Skip automatic emotion checks"
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -353,6 +353,55 @@ class ScheduledNote(models.Model):
     
     def __str__(self):
         return f"Scheduled: {self.title} for {self.autistic_person.name}"
+
+class JournalEntry(models.Model):
+    """Model for daily voice journaling by autistic users"""
+    MOOD_CHOICES = [
+        (1, 'Very Sad'),
+        (2, 'Sad'),
+        (3, 'Neutral'),
+        (4, 'Happy'),
+        (5, 'Very Happy'),
+    ]
+    
+    user = models.ForeignKey(
+        CustomUser, 
+        on_delete=models.CASCADE, 
+        related_name='journal_entries',
+        limit_choices_to={'role': 'autistic_person'}
+    )
+    title = models.CharField(max_length=200, null=True, blank=True, help_text="Optional title for the journal entry")
+    content = models.TextField(null=True, blank=True, help_text="Transcribed content from voice recording")
+    audio_file = models.FileField(upload_to='journal_audio/', null=True, blank=True, help_text="Original voice recording")
+    transcription_confidence = models.FloatField(null=True, blank=True, help_text="Confidence score from Whisper transcription")
+    mood_rating = models.IntegerField(choices=MOOD_CHOICES, null=True, blank=True, help_text="Self-reported mood rating")
+    word_count = models.IntegerField(default=0, help_text="Number of words in the entry")
+    is_private = models.BooleanField(default=False, help_text="Hide from caregivers if true")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Journal Entry'
+        verbose_name_plural = 'Journal Entries'
+        
+    def __str__(self):
+        return f"{self.user.name}'s Journal - {self.created_at.strftime('%Y-%m-%d')}"
+    
+    def save(self, *args, **kwargs):
+        # Auto-calculate word count
+        if self.content:
+            self.word_count = len(self.content.split())
+        super().save(*args, **kwargs)
+    
+    @property
+    def date_created(self):
+        return self.created_at.date()
+    
+    @property
+    def duration_minutes(self):
+        """Estimate reading/speaking duration in minutes"""
+        return max(1, self.word_count // 150)  # Average speaking rate
 
 class GameProgress(models.Model):
     """Model to track user progress in games"""

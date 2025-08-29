@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from .models import CustomUser, EmotionRecord, ChatMessage, UserPreference, PasswordResetOTP, ScheduledNote
+from .models import CustomUser, EmotionRecord, CareRelationship, ChatMessage, UserPreference, PasswordResetOTP, JournalEntry
 from .forms import CustomUserRegistrationForm, CustomLoginForm, CareNoteForm, ForgotPasswordForm, ResetPasswordForm, ScheduledNoteForm, UserPreferenceForm, UserProfileForm
 from .ml_models_fallback import get_emotion_detector, get_speech_processor
 
@@ -153,6 +153,9 @@ def admin_dashboard(request):
 def caregiver_dashboard(request):
     """Caregiver dashboard with patient monitoring"""
     from .models import CareRelationship
+    from datetime import datetime, timedelta
+    from django.db.models import Count, Q, Avg
+    from django.db import models
     
     # Get only autistic persons under this caregiver's care
     care_relationships = CareRelationship.objects.filter(
@@ -168,10 +171,68 @@ def caregiver_dashboard(request):
         user_id__in=user_ids
     ).order_by('-timestamp')[:10]
     
+    # Calculate journaling statistics
+    now = timezone.now()
+    week_ago = now - timedelta(days=7)
+    
+    # Get journal stats for each user
+    user_journal_stats = []
+    total_weekly_entries = 0
+    total_overall_entries = 0
+    
+    for user in autistic_users:
+        # Weekly entries (public only for caregivers)
+        weekly_entries = JournalEntry.objects.filter(
+            user=user,
+            created_at__gte=week_ago,
+            is_private=False
+        ).count()
+        
+        # Overall entries (public only for caregivers)
+        overall_entries = JournalEntry.objects.filter(
+            user=user,
+            is_private=False
+        ).count()
+        
+        # Recent entries for display
+        recent_entries = JournalEntry.objects.filter(
+            user=user,
+            is_private=False
+        ).order_by('-created_at')[:3]
+        
+        # Average mood this week
+        weekly_mood_avg = JournalEntry.objects.filter(
+            user=user,
+            created_at__gte=week_ago,
+            is_private=False,
+            mood_rating__isnull=False
+        ).aggregate(avg_mood=Avg('mood_rating'))['avg_mood']
+        
+        user_journal_stats.append({
+            'user': user,
+            'weekly_entries': weekly_entries,
+            'overall_entries': overall_entries,
+            'recent_entries': recent_entries,
+            'weekly_mood_avg': round(weekly_mood_avg, 1) if weekly_mood_avg else None,
+        })
+        
+        total_weekly_entries += weekly_entries
+        total_overall_entries += overall_entries
+    
+    # Recent journal entries across all users under care
+    recent_journal_entries = JournalEntry.objects.filter(
+        user__in=autistic_users,
+        is_private=False
+    ).select_related('user').order_by('-created_at')[:5]
+    
     context = {
         'autistic_users': autistic_users,
         'recent_emotions': recent_emotions,
         'care_relationships': care_relationships,
+        'user_journal_stats': user_journal_stats,
+        'total_weekly_entries': total_weekly_entries,
+        'total_overall_entries': total_overall_entries,
+        'recent_journal_entries': recent_journal_entries,
     }
     return render(request, 'dashboards/caregiver_dashboard.html', context)
 
@@ -541,6 +602,166 @@ def update_preferences(request):
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)})
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+@login_required
+def daily_journal(request):
+    """Daily journaling view for autistic users"""
+    if request.method == 'POST':
+        try:
+            title = request.POST.get('title', '')
+            content = request.POST.get('content', '')
+            mood_rating = request.POST.get('mood_rating')
+            is_private = request.POST.get('is_private') == 'on'
+            audio_file = request.FILES.get('audio_file')
+            
+            if not content and not audio_file:
+                messages.error(request, 'Please provide either text content or an audio recording.')
+                return render(request, 'journal/daily_journal.html')
+            
+            journal_entry = JournalEntry.objects.create(
+                user=request.user,
+                title=title,
+                content=content,
+                mood_rating=int(mood_rating) if mood_rating else None,
+                is_private=is_private,
+                audio_file=audio_file
+            )
+            
+            messages.success(request, 'Your journal entry has been saved successfully!')
+            return redirect('daily_journal')
+            
+        except Exception as e:
+            messages.error(request, f'Error saving journal entry: {str(e)}')
+            return render(request, 'journal/daily_journal.html')
+    
+    return render(request, 'journal/daily_journal.html')
+
+@login_required
+def transcribe_audio(request):
+    """Transcribe audio using OpenAI Whisper"""
+    if request.method == 'POST':
+        try:
+            audio_file = request.FILES.get('audio')
+            if not audio_file:
+                return JsonResponse({'success': False, 'error': 'No audio file provided'})
+            
+            # Save temporary file
+            import tempfile
+            import os
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as tmp_file:
+                for chunk in audio_file.chunks():
+                    tmp_file.write(chunk)
+                tmp_file_path = tmp_file.name
+            
+            try:
+                # Use the existing speech processor from ml_models_unified
+                from .ml_models_unified import get_speech_processor
+                speech_processor = get_speech_processor()
+                
+                if speech_processor:
+                    result = speech_processor.transcribe_audio(tmp_file_path)
+                    transcription = result.get('transcription', '')
+                    confidence = result.get('confidence', 0.0)
+                    
+                    return JsonResponse({
+                        'success': True,
+                        'transcription': transcription,
+                        'confidence': confidence
+                    })
+                else:
+                    # Fallback transcription
+                    return JsonResponse({
+                        'success': True,
+                        'transcription': 'Voice transcription is currently unavailable. Please type your journal entry.',
+                        'confidence': 0.0
+                    })
+                    
+            finally:
+                # Clean up temporary file
+                if os.path.exists(tmp_file_path):
+                    os.unlink(tmp_file_path)
+                    
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+@login_required
+def journal_list(request):
+    """View journal entries for caregivers and autistic users"""
+    if request.user.role == 'caregiver':
+        # Caregivers can see journal entries from their autistic persons
+        caregiver_relationships = CaregiverRelationship.objects.filter(caregiver=request.user)
+        autistic_users = [rel.autistic_person for rel in caregiver_relationships]
+        journal_entries = JournalEntry.objects.filter(
+            user__in=autistic_users,
+            is_private=False
+        ).order_by('-created_at')
+    else:
+        # Autistic users see their own entries
+        journal_entries = JournalEntry.objects.filter(user=request.user).order_by('-created_at')
+    
+    return render(request, 'journal/journal_list.html', {
+        'journal_entries': journal_entries,
+        'is_caregiver': request.user.role == 'caregiver'
+    })
+
+@login_required
+def journal_detail(request, journal_id):
+    """View detailed journal entry"""
+    try:
+        if request.user.role == 'caregiver':
+            # Caregivers can view entries from their autistic persons
+            caregiver_relationships = CaregiverRelationship.objects.filter(caregiver=request.user)
+            autistic_users = [rel.autistic_person for rel in caregiver_relationships]
+            journal_entry = JournalEntry.objects.get(
+                id=journal_id,
+                user__in=autistic_users,
+                is_private=False
+            )
+        else:
+            # Autistic users can view their own entries
+            journal_entry = JournalEntry.objects.get(id=journal_id, user=request.user)
+            
+        context = {
+            'journal_entry': journal_entry,
+            'is_caregiver': request.user.role == 'caregiver'
+        }
+        return render(request, 'journal/journal_detail.html', context)
+    except JournalEntry.DoesNotExist:
+        messages.error(request, 'Journal entry not found or access denied.')
+        return redirect('journal_list')
+
+@login_required
+@require_http_methods(["POST"])
+def delete_journal_entry(request, journal_id):
+    """Delete a journal entry (only by the owner)"""
+    try:
+        journal_entry = JournalEntry.objects.get(id=journal_id, user=request.user)
+        
+        # Delete the audio file if it exists
+        if journal_entry.audio_file:
+            try:
+                journal_entry.audio_file.delete()
+            except:
+                pass  # File might not exist on disk
+        
+        journal_entry.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Journal entry deleted successfully'
+        })
+    except JournalEntry.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': 'Journal entry not found or you do not have permission to delete it'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': 'An error occurred while deleting the journal entry'
+        }, status=500)
 
 def emotion_history(request):
     """Get recent emotion detection history"""
