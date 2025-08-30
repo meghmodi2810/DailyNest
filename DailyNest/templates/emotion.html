@@ -679,6 +679,24 @@ document.getElementById('stopCamera').addEventListener('click', function() {
 });
 
 // Audio functionality
+let recordingStartTime = null;
+let recordingTimer = null;
+let recordingTimeout = null;
+const MAX_RECORDING_TIME = 5 * 60 * 1000; // 5 minutes
+
+function updateRecordingTimer() {
+    if (!recordingStartTime) return;
+    
+    const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+    const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+    const seconds = (elapsed % 60).toString().padStart(2, '0');
+    document.getElementById('audioStatus').textContent = `Recording... ${minutes}:${seconds} (Max 5:00)`;
+    
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+        requestAnimationFrame(updateRecordingTimer);
+    }
+}
+
 document.getElementById('startRecording').addEventListener('click', async function() {
     try {
         const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -692,6 +710,12 @@ document.getElementById('startRecording').addEventListener('click', async functi
         };
         
         mediaRecorder.onstop = function() {
+            if (recordingTimeout) {
+                clearTimeout(recordingTimeout);
+                recordingTimeout = null;
+            }
+            recordingStartTime = null;
+            
             const blob = new Blob(recordedChunks, { type: 'audio/wav' });
             const reader = new FileReader();
             reader.onloadend = function() {
@@ -700,12 +724,22 @@ document.getElementById('startRecording').addEventListener('click', async functi
             reader.readAsDataURL(blob);
         };
         
-        mediaRecorder.start();
+        mediaRecorder.start(1000); // Collect data every second
+        recordingStartTime = Date.now();
+        updateRecordingTimer();
         
-        document.getElementById('audioStatus').textContent = 'Recording... Speak naturally';
         document.getElementById('micIcon').style.color = '#ef4444';
         document.getElementById('startRecording').style.display = 'none';
         document.getElementById('stopRecording').style.display = 'inline-flex';
+        
+        // Set maximum recording time (5 minutes)
+        recordingTimeout = setTimeout(() => {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                document.getElementById('audioStatus').textContent = 'Maximum recording time (5 minutes) reached';
+            }
+        }, MAX_RECORDING_TIME);
         
         // Animate audio bars
         document.querySelectorAll('.bar').forEach((bar, index) => {
@@ -723,6 +757,11 @@ document.getElementById('stopRecording').addEventListener('click', function() {
     if (mediaRecorder && mediaRecorder.state === 'recording') {
         mediaRecorder.stop();
         mediaRecorder.stream.getTracks().forEach(track => track.stop());
+    }
+    
+    if (recordingTimeout) {
+        clearTimeout(recordingTimeout);
+        recordingTimeout = null;
     }
     
     document.getElementById('audioStatus').textContent = 'Processing audio...';
@@ -760,7 +799,9 @@ function detectEmotion(data) {
             
             // Show speech text if available
             if (result.speech_text && result.speech_text !== "No speech detected") {
-                document.getElementById('audioStatus').textContent = `Speech: "${result.speech_text}"`;
+                document.getElementById('audioStatus').innerHTML = `<strong>Transcription:</strong><br>"${result.speech_text}"<br><small>Emotion: ${emotion}</small>`;
+            } else {
+                document.getElementById('audioStatus').textContent = `Detected: ${emotion}`;
             }
         } else {
             updateEmotionDisplay('Detection failed', 0, 'neutral');

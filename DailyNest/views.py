@@ -6,7 +6,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods, require_POST
 from django.contrib.auth.hashers import check_password
-from .models import CustomUser, EmotionRecord, CareRelationship, ChatMessage, UserPreference, PasswordResetOTP, JournalEntry, CareNote, ScheduledNote
+from .models import CustomUser, EmotionRecord, CareRelationship, ChatMessage, UserPreference, PasswordResetOTP, JournalEntry, CareNote, ScheduledNote, DailyPlannerActivity
 from .forms import (CustomUserRegistrationForm, CustomLoginForm, CareNoteForm, 
                          ForgotPasswordForm, ResetPasswordForm, ScheduledNoteForm, 
                          UserPreferenceForm, UserProfileForm, OTPVerificationForm)
@@ -385,16 +385,21 @@ def caregiver_dashboard(request):
 
 @login_required
 def autistic_dashboard(request):
-    """Autistic person dashboard with personal tools"""
-    from .models import CareRelationship
+    """Autistic person dashboard with personal tools and upcoming notes"""
+    from .models import CareRelationship, ScheduledNote
+    from datetime import datetime, timedelta
     
     recent_emotions = EmotionRecord.objects.filter(user=request.user).order_by('-timestamp')[:5]
     recent_chats = ChatMessage.objects.filter(sender='user').order_by('-timestamp')[:5]
     
-    caregiver_relationships = CareRelationship.objects.filter(
+    # Get upcoming scheduled notes (for today and future)
+    from django.db.models import Q
+    today = timezone.now().date()
+    upcoming_notes = ScheduledNote.objects.filter(
         autistic_person=request.user,
-        is_active=True
-    ).select_related('caregiver')
+        scheduled_time__date__gte=today,
+        status='pending'  # Assuming 'pending' is one of the status values
+    ).order_by('scheduled_time')[:5]  # Get up to 5 upcoming notes
     
     # Check if emotion check is needed
     show_emotion_check = False
@@ -437,7 +442,7 @@ def autistic_dashboard(request):
     context = {
         'recent_emotions': recent_emotions,
         'recent_chats': recent_chats,
-        'caregiver_relationships': caregiver_relationships,
+        'upcoming_notes': upcoming_notes,
         'show_emotion_check': show_emotion_check,
     }
     return render(request, 'dashboards/autistic_dashboard.html', context)
@@ -499,6 +504,16 @@ def detect_emotion(request):
     """Enhanced emotion detection endpoint"""
     if request.method == 'POST':
         try:
+            # Check request size to prevent broken pipe errors
+            if hasattr(request, 'META') and 'CONTENT_LENGTH' in request.META:
+                content_length = int(request.META.get('CONTENT_LENGTH', 0))
+                max_size = 50 * 1024 * 1024  # 50MB limit
+                if content_length > max_size:
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'Request too large. Maximum size is {max_size // (1024*1024)}MB'
+                    }, status=413)
+            
             data = json.loads(request.body)
             face_emotion = None
             voice_emotion = None
@@ -520,19 +535,42 @@ def detect_emotion(request):
             # Process audio with speech recognition
             if 'audio' in data:
                 try:
+                    # Check audio data size
+                    audio_b64 = data['audio']
+                    if len(audio_b64) > 10 * 1024 * 1024:  # 10MB limit for audio
+                        logger.warning(f"Audio data too large: {len(audio_b64)} bytes")
+                        return JsonResponse({
+                            'success': False,
+                            'error': 'Audio file too large. Please record shorter audio (max 5 minutes).'
+                        }, status=413)
+                    
                     # Decode base64 audio
-                    audio_data = base64.b64decode(data['audio'].split(',')[1])
+                    try:
+                        audio_data = base64.b64decode(audio_b64.split(',')[1])
+                    except (IndexError, ValueError) as e:
+                        logger.error(f"Invalid audio data format: {e}")
+                        return JsonResponse({
+                            'success': False,
+                            'error': 'Invalid audio data format'
+                        }, status=400)
                     
-                    # Save to temporary file
-                    with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_audio:
-                        temp_audio.write(audio_data)
-                        temp_audio_path = temp_audio.name
-                    
-                    # Process audio for speech and emotion
-                    speech_text, voice_emotion, voice_confidence = speech_processor.process_audio_file(temp_audio_path)
-                    
-                    # Clean up
-                    os.unlink(temp_audio_path)
+                    # Save to temporary file with better error handling
+                    temp_audio_path = None
+                    try:
+                        with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as temp_audio:
+                            temp_audio.write(audio_data)
+                            temp_audio_path = temp_audio.name
+                        
+                        # Process audio for speech and emotion
+                        speech_text, voice_emotion, voice_confidence = speech_processor.process_audio_file(temp_audio_path)
+                        
+                    finally:
+                        # Clean up temporary file
+                        if temp_audio_path and os.path.exists(temp_audio_path):
+                            try:
+                                os.unlink(temp_audio_path)
+                            except OSError as e:
+                                logger.warning(f"Failed to delete temp file {temp_audio_path}: {e}")
                     
                 except Exception as e:
                     logger.error(f"Audio processing error: {str(e)}")
@@ -566,16 +604,26 @@ def detect_emotion(request):
                 'confidence': 'high' if (face_confidence > 0.6 or voice_confidence > 0.6) else 'low'
             })
 
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error: {str(e)}")
+            return JsonResponse({
+                'success': False,
+                'error': 'Invalid JSON data'
+            }, status=400)
+        except ConnectionAbortedError as e:
+            logger.warning(f"Connection aborted (broken pipe): {str(e)}")
+            return JsonResponse({
+                'success': False,
+                'error': 'Connection interrupted. Please try again with shorter audio.'
+            }, status=408)
         except Exception as e:
             logger.error(f"Emotion detection error: {str(e)}")
             return JsonResponse({
                 'success': False,
-                'error': str(e)
+                'error': 'Processing failed. Please try again.'
             }, status=500)
 
     return JsonResponse({'error': 'Invalid request method'}, status=405)
-
-@csrf_exempt
 def skip_emotion_check(request):
     if request.method == 'POST' and request.user.is_authenticated:
         try:
@@ -1611,6 +1659,11 @@ def calm_maze(request):
     return render(request, 'games/calm_maze.html')
 
 @login_required
+def jigsaw_puzzle(request):
+    """Jigsaw puzzle game view"""
+    return render(request, 'games/jigsaw_puzzle.html')
+
+@login_required
 def bubble_pop(request):
     """Bubble pop game view"""
     from .models import GameSession
@@ -2082,3 +2135,173 @@ def delete_scheduled_note(request, note_id):
     note = get_object_or_404(ScheduledNote, id=note_id, caregiver=request.user)
     note.delete()
     return JsonResponse({'status': 'success'})
+
+# Daily Planner Views
+@login_required
+@require_POST
+def create_daily_activity(request):
+    """Create a new daily planner activity"""
+    try:
+        # Extract form data
+        title = request.POST.get('title')
+        description = request.POST.get('description')
+        activity_type = request.POST.get('activity_type')
+        scheduled_date = request.POST.get('scheduled_date')
+        scheduled_time = request.POST.get('scheduled_time')
+        duration_minutes = int(request.POST.get('duration_minutes', 30))
+        priority = request.POST.get('priority', 'medium')
+        assigned_to_id = request.POST.get('assigned_to')
+        reminder_minutes_before = int(request.POST.get('reminder_minutes_before', 15))
+        caregiver_notes = request.POST.get('caregiver_notes', '')
+        
+        # Validate required fields
+        if not all([title, description, activity_type, scheduled_date, scheduled_time, assigned_to_id]):
+            return JsonResponse({'success': False, 'error': 'All required fields must be filled'})
+        
+        # Get assigned user
+        assigned_to = get_object_or_404(CustomUser, id=assigned_to_id)
+        
+        # Create the activity
+        activity = DailyPlannerActivity.objects.create(
+            title=title,
+            description=description,
+            activity_type=activity_type,
+            scheduled_date=scheduled_date,
+            scheduled_time=scheduled_time,
+            duration_minutes=duration_minutes,
+            priority=priority,
+            assigned_to=assigned_to,
+            created_by=request.user,
+            reminder_minutes_before=reminder_minutes_before,
+            caregiver_notes=caregiver_notes
+        )
+        
+        return JsonResponse({
+            'success': True, 
+            'message': 'Daily activity created successfully',
+            'activity_id': activity.id
+        })
+        
+    except Exception as e:
+        logger.error(f"Error creating daily activity: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@login_required
+def daily_planner_list(request):
+    """View all daily planner activities"""
+    # Get activities created by this caregiver
+    activities = DailyPlannerActivity.objects.filter(
+        created_by=request.user
+    ).select_related('assigned_to').order_by('scheduled_date', 'scheduled_time')
+    
+    # Get upcoming activities (next 7 days)
+    from datetime import date, timedelta
+    today = date.today()
+    next_week = today + timedelta(days=7)
+    
+    upcoming_activities = activities.filter(
+        scheduled_date__range=[today, next_week],
+        status='scheduled'
+    )
+    
+    # Get activities by status
+    scheduled_activities = activities.filter(status='scheduled')
+    completed_activities = activities.filter(status='completed')
+    
+    # Get activity statistics
+    total_activities = activities.count()
+    completed_count = completed_activities.count()
+    pending_count = scheduled_activities.count()
+    
+    # Get individuals under care
+    autistic_users = CustomUser.objects.filter(role='autistic_person')
+    
+    context = {
+        'activities': activities,
+        'upcoming_activities': upcoming_activities,
+        'scheduled_activities': scheduled_activities,
+        'completed_activities': completed_activities,
+        'total_activities': total_activities,
+        'completed_count': completed_count,
+        'pending_count': pending_count,
+        'autistic_users': autistic_users,
+    }
+    
+    return render(request, 'daily_planner/activity_list.html', context)
+
+@login_required
+@require_POST
+def update_activity_status(request, activity_id):
+    """Update activity status (complete, cancel, etc.)"""
+    try:
+        activity = get_object_or_404(DailyPlannerActivity, id=activity_id, created_by=request.user)
+        new_status = request.POST.get('status')
+        completion_notes = request.POST.get('completion_notes', '')
+        
+        if new_status == 'completed':
+            activity.mark_completed(completion_notes)
+        else:
+            activity.status = new_status
+            if completion_notes:
+                activity.completion_notes = completion_notes
+            activity.save()
+        
+        return JsonResponse({'success': True, 'message': f'Activity marked as {new_status}'})
+        
+    except Exception as e:
+        logger.error(f"Error updating activity status: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@login_required
+@require_POST
+def delete_daily_activity(request, activity_id):
+    """Delete a daily planner activity"""
+    try:
+        activity = get_object_or_404(DailyPlannerActivity, id=activity_id, created_by=request.user)
+        activity.delete()
+        return JsonResponse({'success': True, 'message': 'Activity deleted successfully'})
+        
+    except Exception as e:
+        logger.error(f"Error deleting activity: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@login_required
+def get_upcoming_activities(request):
+    """Get upcoming activities for autistic person dashboard"""
+    if request.user.role != 'autistic_person':
+        return JsonResponse({'error': 'Access denied'}, status=403)
+    
+    # Get activities assigned to this user
+    from datetime import date, timedelta
+    today = date.today()
+    next_week = today + timedelta(days=7)
+    
+    activities = DailyPlannerActivity.objects.filter(
+        assigned_to=request.user,
+        scheduled_date__range=[today, next_week],
+        status='scheduled'
+    ).order_by('scheduled_date', 'scheduled_time')
+    
+    # Get activities due soon (within reminder time)
+    due_soon = [activity for activity in activities if activity.is_due_soon]
+    
+    activities_data = []
+    for activity in activities:
+        activities_data.append({
+            'id': activity.id,
+            'title': activity.title,
+            'description': activity.description,
+            'activity_type': activity.activity_type,
+            'scheduled_date': activity.scheduled_date.strftime('%Y-%m-%d'),
+            'scheduled_time': activity.scheduled_time.strftime('%H:%M'),
+            'duration_minutes': activity.duration_minutes,
+            'priority': activity.priority,
+            'is_due_soon': activity.is_due_soon,
+            'icon': activity.get_activity_type_icon(),
+            'priority_color': activity.get_priority_color(),
+        })
+    
+    return JsonResponse({
+        'activities': activities_data,
+        'due_soon_count': len(due_soon)
+    })

@@ -585,3 +585,139 @@ class GameSession(models.Model):
             progress.time_spent += final_duration
             progress.last_played = timezone.now()
             progress.save()
+
+class DailyPlannerActivity(models.Model):
+    """
+    Daily Planning System for structuring the user's day.
+    Enables caregivers to create and manage detailed schedules for autistic individuals.
+    """
+    ACTIVITY_TYPE_CHOICES = [
+        ('routine', 'Routine'),
+        ('therapy', 'Therapy'),
+        ('learning', 'Learning'),
+        ('play', 'Play'),
+        ('meal', 'Meal'),
+        ('rest', 'Rest'),
+        ('social', 'Social'),
+        ('other', 'Other'),
+    ]
+    
+    PRIORITY_CHOICES = [
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('scheduled', 'Scheduled'),
+        ('in_progress', 'In Progress'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+        ('missed', 'Missed'),
+    ]
+    
+    # Core fields
+    title = models.CharField(max_length=200, help_text="Activity title")
+    description = models.TextField(blank=True, help_text="Detailed activity description")
+    activity_type = models.CharField(max_length=20, choices=ACTIVITY_TYPE_CHOICES, default='routine')
+    
+    # Scheduling fields
+    scheduled_date = models.DateField(help_text="Date when activity is scheduled")
+    scheduled_time = models.TimeField(help_text="Time when activity starts")
+    duration_minutes = models.PositiveIntegerField(default=30, help_text="Duration in minutes")
+    
+    # Priority and status
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='scheduled')
+    
+    # Relationships
+    assigned_to = models.ForeignKey('CustomUser', on_delete=models.CASCADE, related_name='daily_activities', help_text="User this activity is assigned to")
+    created_by = models.ForeignKey('CustomUser', on_delete=models.CASCADE, related_name='created_activities', help_text="Caregiver who created this activity")
+    
+    # Reminder settings
+    reminder_enabled = models.BooleanField(default=True, help_text="Whether to show reminders")
+    reminder_minutes_before = models.PositiveIntegerField(default=15, help_text="Minutes before activity to show reminder")
+    
+    # Tracking fields
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    completed_at = models.DateTimeField(null=True, blank=True, help_text="When activity was marked as completed")
+    
+    # Notes and feedback
+    completion_notes = models.TextField(blank=True, help_text="Notes added when activity is completed")
+    caregiver_notes = models.TextField(blank=True, help_text="Private notes for caregivers")
+    
+    class Meta:
+        ordering = ['scheduled_date', 'scheduled_time']
+        indexes = [
+            models.Index(fields=['scheduled_date', 'scheduled_time']),
+            models.Index(fields=['assigned_to', 'status']),
+            models.Index(fields=['activity_type']),
+            models.Index(fields=['priority']),
+        ]
+        verbose_name = "Daily Planner Activity"
+        verbose_name_plural = "Daily Planner Activities"
+    
+    def __str__(self):
+        return f"{self.title} - {self.assigned_to.name} ({self.scheduled_date} {self.scheduled_time})"
+    
+    @property
+    def is_upcoming(self):
+        """Check if activity is upcoming (scheduled for future)"""
+        from django.utils import timezone
+        now = timezone.now()
+        scheduled_datetime = timezone.datetime.combine(self.scheduled_date, self.scheduled_time)
+        if timezone.is_naive(scheduled_datetime):
+            scheduled_datetime = timezone.make_aware(scheduled_datetime)
+        return scheduled_datetime > now and self.status == 'scheduled'
+    
+    @property
+    def is_due_soon(self):
+        """Check if activity is due within reminder time"""
+        from django.utils import timezone
+        now = timezone.now()
+        scheduled_datetime = timezone.datetime.combine(self.scheduled_date, self.scheduled_time)
+        if timezone.is_naive(scheduled_datetime):
+            scheduled_datetime = timezone.make_aware(scheduled_datetime)
+        reminder_time = scheduled_datetime - timezone.timedelta(minutes=self.reminder_minutes_before)
+        return now >= reminder_time and scheduled_datetime > now and self.status == 'scheduled'
+    
+    @property
+    def end_time(self):
+        """Calculate end time based on start time and duration"""
+        from datetime import datetime, timedelta
+        start_datetime = datetime.combine(self.scheduled_date, self.scheduled_time)
+        end_datetime = start_datetime + timedelta(minutes=self.duration_minutes)
+        return end_datetime.time()
+    
+    def mark_completed(self, notes=""):
+        """Mark activity as completed"""
+        from django.utils import timezone
+        self.status = 'completed'
+        self.completed_at = timezone.now()
+        if notes:
+            self.completion_notes = notes
+        self.save()
+    
+    def get_activity_type_icon(self):
+        """Get FontAwesome icon for activity type"""
+        icons = {
+            'routine': 'fas fa-clock',
+            'therapy': 'fas fa-heart',
+            'learning': 'fas fa-book',
+            'play': 'fas fa-gamepad',
+            'meal': 'fas fa-utensils',
+            'rest': 'fas fa-bed',
+            'social': 'fas fa-users',
+            'other': 'fas fa-star',
+        }
+        return icons.get(self.activity_type, 'fas fa-star')
+    
+    def get_priority_color(self):
+        """Get color class for priority"""
+        colors = {
+            'low': 'success',
+            'medium': 'warning', 
+            'high': 'danger',
+        }
+        return colors.get(self.priority, 'secondary')

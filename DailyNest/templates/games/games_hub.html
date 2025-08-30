@@ -128,8 +128,46 @@
         </div>
     </div>
 
-    <!-- Breathing Garden Game -->
+    <!-- Jigsaw Puzzle Game -->
     <div class="game-card card animate-fade-in-up" style="animation-delay: 0.3s;">
+        <div class="game-icon">
+            <i class="fas fa-puzzle-piece"></i>
+        </div>
+        <div class="game-content">
+            <h3>Jigsaw Puzzle</h3>
+            <p>Piece together beautiful images in this calming puzzle game. Perfect for developing patience and focus.</p>
+            <div class="game-features">
+                <span class="feature-tag"><i class="fas fa-brain"></i> Problem Solving</span>
+                <span class="feature-tag"><i class="fas fa-heart"></i> Patience</span>
+                <span class="feature-tag"><i class="fas fa-eye"></i> Visual Processing</span>
+            </div>
+            <div class="game-stats">
+                <div class="stat">
+                    <span class="stat-label">Difficulty</span>
+                    <div class="difficulty-bars">
+                        <div class="bar active"></div>
+                        <div class="bar active"></div>
+                        <div class="bar active"></div>
+                    </div>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Duration</span>
+                    <span class="stat-value">5-30 min</span>
+                </div>
+            </div>
+        </div>
+        <div class="game-actions">
+            <a href="{% url 'jigsaw_puzzle' %}" class="btn btn-primary">
+                <i class="fas fa-play"></i> Play Now
+            </a>
+            <button class="btn-icon" onclick="showGameInfo('jigsaw')" aria-label="Game Information">
+                <i class="fas fa-info-circle"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Breathing Garden Game -->
+    <div class="game-card card animate-fade-in-up" style="animation-delay: 0.4s;">
         <div class="game-icon">
             <i class="fas fa-wind"></i>
         </div>

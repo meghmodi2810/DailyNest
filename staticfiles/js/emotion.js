@@ -160,12 +160,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (micIcon) micIcon.className = 'fas fa-microphone fa-3x recording';
                 if (audioStatus) audioStatus.textContent = 'Recording... Speak now!';
                 
-                // Auto-stop after 5 seconds
-                setTimeout(() => {
+                // Set maximum recording time (5 minutes)
+                recordingTimeout = setTimeout(() => {
                     if (mediaRecorder && mediaRecorder.state === 'recording') {
                         mediaRecorder.stop();
+                        if (audioStatus) audioStatus.textContent = 'Maximum recording time (5 minutes) reached';
                     }
-                }, 5000);
+                }, 300000); // 5 minutes
                 
             } catch (error) {
                 console.error('Microphone error:', error);

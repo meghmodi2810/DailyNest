@@ -28,6 +28,14 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+# File upload settings to prevent broken pipe errors
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024  # 50MB
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 1000
+
+# Connection timeout settings
+CONN_MAX_AGE = 0  # Close database connections at the end of each request
+
 
 # Application definition
 
@@ -119,6 +127,10 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+        'CONN_MAX_AGE': 0,  # Close connections immediately
+        'OPTIONS': {
+            'timeout': 20,  # 20 second timeout
+        }
     }
 }
 

@@ -454,14 +454,11 @@ class UserPreferenceForm(forms.ModelForm):
     """Form for updating user preferences including emotion check settings"""
     class Meta:
         model = UserPreference
-        fields = ['theme', 'font_size', 'reduce_animations', 'high_contrast_mode', 
-                 'text_to_speech', 'emotion_check_interval', 'skip_emotion_checks']
+        fields = ['theme', 'font_size', 'reduce_animations', 'emotion_check_interval', 'skip_emotion_checks']
         widgets = {
             'theme': forms.Select(attrs={'class': 'form-select'}),
             'font_size': forms.Select(attrs={'class': 'form-select'}),
             'reduce_animations': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'high_contrast_mode': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'text_to_speech': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'emotion_check_interval': forms.Select(attrs={'class': 'form-select'}),
             'skip_emotion_checks': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }

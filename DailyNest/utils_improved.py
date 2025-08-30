@@ -406,40 +406,92 @@ def validate_emotion(emotion):
     return emotion if emotion in valid_emotions else 'neutral'
 
 def get_emotion_statistics():
-    """Get emotion detection statistics from cache"""
+    """Get comprehensive emotion detection statistics"""
     from .models import EmotionRecord
     from django.utils import timezone
     from datetime import timedelta
+    from django.db.models import Avg, Count
     
-    # Get stats for last 24 hours
-    yesterday = timezone.now() - timedelta(days=1)
-    recent_records = EmotionRecord.objects.filter(timestamp__gte=yesterday)
+    # Time ranges for analysis
+    now = timezone.now()
+    last_24h = now - timedelta(days=1)
+    last_week = now - timedelta(days=7)
     
     stats = {
-        'total_detections': recent_records.count(),
-        'face_emotions': {},
-        'voice_emotions': {},
-        'avg_confidence': {
-            'face': 0.0,
-            'voice': 0.0
+        'current': {
+            'face_emotions': {},
+            'voice_emotions': {},
+            'avg_confidence': {'face': 0.0, 'voice': 0.0},
+            'total_detections': 0
+        },
+        'trends': {
+            'daily': [],
+            'weekly': {},
+            'dominant_emotions': []
+        },
+        'patterns': {
+            'time_of_day': {},
+            'day_of_week': {}
         }
     }
     
+    # Recent records analysis (24h)
+    recent_records = EmotionRecord.objects.filter(timestamp__gte=last_24h)
     if recent_records.exists():
-        # Count emotion frequencies
+        stats['current']['total_detections'] = recent_records.count()
+        
+        # Emotion frequencies
         for record in recent_records:
             if record.face_emotion:
-                stats['face_emotions'][record.face_emotion] = stats['face_emotions'].get(record.face_emotion, 0) + 1
+                stats['current']['face_emotions'][record.face_emotion] = stats['current']['face_emotions'].get(record.face_emotion, 0) + 1
             if record.voice_emotion:
-                stats['voice_emotions'][record.voice_emotion] = stats['voice_emotions'].get(record.voice_emotion, 0) + 1
+                stats['current']['voice_emotions'][record.voice_emotion] = stats['current']['voice_emotions'].get(record.voice_emotion, 0) + 1
         
-        # Calculate average confidence
-        face_confidences = [r.face_confidence for r in recent_records if r.face_confidence > 0]
-        voice_confidences = [r.voice_confidence for r in recent_records if r.voice_confidence > 0]
+        # Average confidence scores
+        confidence_avg = recent_records.aggregate(
+            face_avg=Avg('face_confidence'),
+            voice_avg=Avg('voice_confidence')
+        )
+        stats['current']['avg_confidence']['face'] = round(confidence_avg['face_avg'] or 0.0, 2)
+        stats['current']['avg_confidence']['voice'] = round(confidence_avg['voice_avg'] or 0.0, 2)
         
-        if face_confidences:
-            stats['avg_confidence']['face'] = sum(face_confidences) / len(face_confidences)
-        if voice_confidences:
-            stats['avg_confidence']['voice'] = sum(voice_confidences) / len(voice_confidences)
+        # Time-based patterns
+        for record in recent_records:
+            hour = record.timestamp.hour
+            weekday = record.timestamp.strftime('%A')
+            
+            # Time of day tracking
+            time_slot = f"{hour:02d}:00"
+            if time_slot not in stats['patterns']['time_of_day']:
+                stats['patterns']['time_of_day'][time_slot] = {'emotions': {}}
+            dominant = record.dominant_emotion
+            stats['patterns']['time_of_day'][time_slot]['emotions'][dominant] = \
+                stats['patterns']['time_of_day'][time_slot]['emotions'].get(dominant, 0) + 1
+            
+            # Day of week tracking
+            if weekday not in stats['patterns']['day_of_week']:
+                stats['patterns']['day_of_week'][weekday] = {'emotions': {}}
+            stats['patterns']['day_of_week'][weekday]['emotions'][dominant] = \
+                stats['patterns']['day_of_week'][weekday]['emotions'].get(dominant, 0) + 1
+    
+    # Weekly trends
+    weekly_records = EmotionRecord.objects.filter(timestamp__gte=last_week)
+    if weekly_records.exists():
+        for i in range(7):
+            day = now - timedelta(days=i)
+            day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
+            day_end = day_start + timedelta(days=1)
+            
+            day_records = weekly_records.filter(timestamp__range=(day_start, day_end))
+            if day_records.exists():
+                dominant_emotions = day_records.values('face_emotion').annotate(
+                    count=Count('face_emotion')
+                ).order_by('-count')
+                
+                stats['trends']['daily'].append({
+                    'date': day_start.strftime('%Y-%m-%d'),
+                    'total': day_records.count(),
+                    'dominant_emotion': dominant_emotions[0]['face_emotion'] if dominant_emotions else 'neutral'
+                })
     
     return stats

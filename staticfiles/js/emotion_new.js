@@ -21,6 +21,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let audioChunks = [];
     let isProcessing = false;
     let currentMode = 'face';
+    let recordingStartTime = null;
+    let recordingTimer = null;
+    const MAX_RECORDING_TIME = 5 * 60 * 1000; // 5 minutes in milliseconds
 
     // Mode switching
     window.switchMode = function(mode) {
@@ -155,21 +158,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     stream.getTracks().forEach(track => track.stop());
                 };
 
-                mediaRecorder.start();
+                mediaRecorder.start(1000); // Collect data every second
                 
                 // Update UI
                 startRecording.style.display = 'none';
                 stopRecording.style.display = 'inline-flex';
                 micIcon.className = 'fas fa-microphone fa-3x recording';
-                audioStatus.textContent = 'Recording... Speak now!';
+                recordingStartTime = Date.now();
+                updateRecordingTimer();
                 startAudioVisualization();
                 
-                // Auto-stop after 5 seconds
-                setTimeout(() => {
+                // Set maximum recording time
+                recordingTimer = setTimeout(() => {
                     if (mediaRecorder && mediaRecorder.state === 'recording') {
                         mediaRecorder.stop();
                     }
-                }, 5000);
+                }, MAX_RECORDING_TIME);
                 
             } catch (error) {
                 console.error('Microphone access error:', error);
@@ -182,8 +186,25 @@ document.addEventListener('DOMContentLoaded', () => {
         stopRecording.addEventListener('click', () => {
             if (mediaRecorder && mediaRecorder.state === 'recording') {
                 mediaRecorder.stop();
+                if (recordingTimer) {
+                    clearTimeout(recordingTimer);
+                    recordingTimer = null;
+                }
             }
         });
+    }
+    
+    function updateRecordingTimer() {
+        if (!recordingStartTime) return;
+        
+        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+        const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+        const seconds = (elapsed % 60).toString().padStart(2, '0');
+        audioStatus.textContent = `Recording... ${minutes}:${seconds} (Max 5:00)`;
+        
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+            requestAnimationFrame(updateRecordingTimer);
+        }
     }
 
     async function processAudioEmotion() {
@@ -196,6 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
             micIcon.className = 'fas fa-microphone fa-3x';
             audioStatus.textContent = 'Processing audio...';
             stopAudioVisualization();
+            recordingStartTime = null;
 
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
             const reader = new FileReader();

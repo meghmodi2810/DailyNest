@@ -228,22 +228,22 @@
                     <p>Read and review journal entries</p>
                 </div>
             </a>
-            <a href="#" class="tool-card" onclick="openScheduleNoteModal()">
+            <a href="#" class="tool-card" onclick="openDailyPlannerModal()">
                 <div class="tool-icon">
                     <i class="fas fa-calendar-plus"></i>
                 </div>
                 <div class="tool-content">
-                    <h4>Schedule Note</h4>
-                    <p>Create scheduled notes for individuals</p>
+                    <h4>Daily Planner</h4>
+                    <p>Create structured daily activities and schedules</p>
                 </div>
             </a>
-            <a href="{% url 'scheduled_notes_list' %}" class="tool-card">
+            <a href="{% url 'daily_planner_list' %}" class="tool-card">
                 <div class="tool-icon">
                     <i class="fas fa-calendar-alt"></i>
                 </div>
                 <div class="tool-content">
-                    <h4>Scheduled Notes</h4>
-                    <p>View all scheduled notes</p>
+                    <h4>Daily Activities</h4>
+                    <p>View and manage all scheduled activities</p>
                 </div>
             </a>
             <button class="tool-card" onclick="generateReport()">
@@ -1209,48 +1209,69 @@
     }
 </script>
 
-<!-- Schedule Note Modal -->
-<div id="scheduleNoteModal" class="modal">
+<!-- Daily Planner Modal -->
+<div id="dailyPlannerModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title">
                 <i class="fas fa-calendar-plus"></i>
-                Schedule Calming Note
+                Create Daily Activity
             </h2>
-            <button class="modal-close" onclick="closeScheduleNoteModal()">
+            <button class="modal-close" onclick="closeDailyPlannerModal()">
                 <i class="fas fa-times"></i>
             </button>
         </div>
 
-        <form id="scheduleNoteForm">
+        <form id="dailyPlannerForm">
             <div class="form-row">
                 <div class="form-group">
-                    <label for="noteDate" class="form-label">Date</label>
-                    <input type="date" id="noteDate" name="date" class="form-input" required>
+                    <label for="activityDate" class="form-label">Date</label>
+                    <input type="date" id="activityDate" name="scheduled_date" class="form-input" required>
                 </div>
                 <div class="form-group">
-                    <label for="noteTime" class="form-label">Time</label>
-                    <input type="time" id="noteTime" name="time" class="form-input" required>
+                    <label for="activityTime" class="form-label">Start Time</label>
+                    <input type="time" id="activityTime" name="scheduled_time" class="form-input" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="activityType" class="form-label">Activity Type</label>
+                    <select id="activityType" name="activity_type" class="form-select" required>
+                        <option value="">Select activity type...</option>
+                        <option value="routine">🕐 Routine - Daily habits and schedules</option>
+                        <option value="therapy">❤️ Therapy - Therapeutic sessions and exercises</option>
+                        <option value="learning">📚 Learning - Educational activities and study</option>
+                        <option value="play">🎮 Play - Fun activities and games</option>
+                        <option value="meal">🍽️ Meal - Eating and nutrition time</option>
+                        <option value="rest">🛏️ Rest - Sleep and relaxation periods</option>
+                        <option value="social">👥 Social - Interaction with others</option>
+                        <option value="other">⭐ Other - Custom activities</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="activityDuration" class="form-label">Duration (minutes)</label>
+                    <input type="number" id="activityDuration" name="duration_minutes" class="form-input" min="5" max="480" value="30" required>
                 </div>
             </div>
 
             <div class="form-group">
-                <label for="noteTitle" class="form-label">Note Title</label>
-                <input type="text" id="noteTitle" name="title" class="form-input" placeholder="e.g., Morning Encouragement" required>
+                <label for="activityTitle" class="form-label">Activity Title</label>
+                <input type="text" id="activityTitle" name="title" class="form-input" placeholder="e.g., Morning Brushing Teeth, Math Lesson, Playground Time" required>
             </div>
 
             <div class="form-group">
-                <label for="noteContent" class="form-label">Note Content</label>
-                <textarea id="noteContent" name="content" class="form-textarea" placeholder="Write a calming, encouraging note for the individual..." required></textarea>
+                <label for="activityDescription" class="form-label">Description & Instructions</label>
+                <textarea id="activityDescription" name="description" class="form-textarea" placeholder="Detailed instructions, materials needed, or special notes for this activity..." required></textarea>
             </div>
 
             <div class="form-group">
                 <label class="form-label">Priority Level</label>
                 <div class="priority-selector">
-                    <div class="priority-option low selected" onclick="selectPriority('low')">
+                    <div class="priority-option low" onclick="selectPriority('low')">
                         <i class="fas fa-leaf"></i> Low
                     </div>
-                    <div class="priority-option medium" onclick="selectPriority('medium')">
+                    <div class="priority-option medium selected" onclick="selectPriority('medium')">
                         <i class="fas fa-star"></i> Medium
                     </div>
                     <div class="priority-option high" onclick="selectPriority('high')">
@@ -1259,22 +1280,39 @@
                 </div>
             </div>
 
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="activityRecipient" class="form-label">Assign To</label>
+                    <select id="activityRecipient" name="assigned_to" class="form-select" required>
+                        <option value="">Select individual...</option>
+                        {% for user in autistic_users %}
+                            <option value="{{ user.id }}">{{ user.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="reminderMinutes" class="form-label">Reminder (minutes before)</label>
+                    <select id="reminderMinutes" name="reminder_minutes_before" class="form-select">
+                        <option value="5">5 minutes</option>
+                        <option value="10">10 minutes</option>
+                        <option value="15" selected>15 minutes</option>
+                        <option value="30">30 minutes</option>
+                        <option value="60">1 hour</option>
+                    </select>
+                </div>
+            </div>
+
             <div class="form-group">
-                <label for="noteRecipient" class="form-label">For Individual</label>
-                <select id="noteRecipient" name="recipient" class="form-select" required>
-                    <option value="">Select individual...</option>
-                    {% for user in autistic_users %}
-                        <option value="{{ user.id }}">{{ user.name }}</option>
-                    {% endfor %}
-                </select>
+                <label for="caregiverNotes" class="form-label">Caregiver Notes (Private)</label>
+                <textarea id="caregiverNotes" name="caregiver_notes" class="form-textarea" placeholder="Private notes for caregivers about this activity..."></textarea>
             </div>
 
             <div class="modal-actions">
-                <button type="button" class="btn-secondary" onclick="closeScheduleNoteModal()">
+                <button type="button" class="btn-secondary" onclick="closeDailyPlannerModal()">
                     <i class="fas fa-times"></i> Cancel
                 </button>
                 <button type="submit" class="btn-primary">
-                    <i class="fas fa-calendar-check"></i> Schedule Note
+                    <i class="fas fa-calendar-check"></i> Create Activity
                 </button>
             </div>
         </form>
@@ -1282,29 +1320,29 @@
 </div>
 
 <script>
-    let selectedPriority = 'low';
+    let selectedPriority = 'medium';
 
-    function openScheduleNoteModal() {
-        const modal = document.getElementById('scheduleNoteModal');
+    function openDailyPlannerModal() {
+        const modal = document.getElementById('dailyPlannerModal');
         modal.classList.add('active');
         
         // Set default date to today
         const today = new Date();
-        document.getElementById('noteDate').value = today.toISOString().split('T')[0];
+        document.getElementById('activityDate').value = today.toISOString().split('T')[0];
         
         // Set default time to current time + 1 hour
         const currentTime = new Date();
         currentTime.setHours(currentTime.getHours() + 1);
-        document.getElementById('noteTime').value = currentTime.toTimeString().slice(0, 5);
+        document.getElementById('activityTime').value = currentTime.toTimeString().slice(0, 5);
     }
 
-    function closeScheduleNoteModal() {
-        const modal = document.getElementById('scheduleNoteModal');
+    function closeDailyPlannerModal() {
+        const modal = document.getElementById('dailyPlannerModal');
         modal.classList.remove('active');
         
         // Reset form
-        document.getElementById('scheduleNoteForm').reset();
-        selectedPriority = 'low';
+        document.getElementById('dailyPlannerForm').reset();
+        selectedPriority = 'medium';
         updatePrioritySelection();
     }
 
@@ -1324,28 +1362,93 @@
     }
 
     // Handle form submission
-    document.getElementById('scheduleNoteForm').addEventListener('submit', function(e) {
+    document.getElementById('dailyPlannerForm').addEventListener('submit', function(e) {
         e.preventDefault();
         
         const formData = new FormData(this);
         formData.append('priority', selectedPriority);
         
-        // Here you would typically send the data to your Django backend
-        // For now, we'll show a success message
-        alert('Note scheduled successfully! The individual will receive this calming note at the specified time.');
-        closeScheduleNoteModal();
+        // Send to Django backend
+        fetch('/daily-planner/create/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Daily activity created successfully! The individual will see this in their upcoming activities.');
+                closeDailyPlannerModal();
+                location.reload(); // Refresh to show new activity
+            } else {
+                alert('Error creating activity: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error creating activity. Please try again.');
+        });
     });
 
     // Close modal when clicking outside
-    document.getElementById('scheduleNoteModal').addEventListener('click', function(e) {
+    document.getElementById('dailyPlannerModal').addEventListener('click', function(e) {
         if (e.target === this) {
-            closeScheduleNoteModal();
+            closeDailyPlannerModal();
         }
     });
 
     // Initialize priority selection
     document.addEventListener('DOMContentLoaded', function() {
         updatePrioritySelection();
+    });
+
+    // Activity type change handler to update placeholder text
+    document.getElementById('activityType').addEventListener('change', function() {
+        const activityType = this.value;
+        const titleInput = document.getElementById('activityTitle');
+        const descriptionInput = document.getElementById('activityDescription');
+        
+        const placeholders = {
+            'routine': {
+                title: 'e.g., Morning Brushing Teeth, Getting Dressed, Bedtime Routine',
+                description: 'Step-by-step instructions for this routine activity...'
+            },
+            'therapy': {
+                title: 'e.g., Speech Therapy Session, Occupational Therapy, Sensory Break',
+                description: 'Therapy goals, exercises, or techniques to focus on...'
+            },
+            'learning': {
+                title: 'e.g., Math Lesson, Reading Time, Science Experiment',
+                description: 'Learning objectives, materials needed, and instructions...'
+            },
+            'play': {
+                title: 'e.g., Playground Time, Board Games, Creative Arts',
+                description: 'Fun activities, games to play, or creative projects...'
+            },
+            'meal': {
+                title: 'e.g., Breakfast, Lunch, Snack Time',
+                description: 'Meal details, dietary considerations, or eating goals...'
+            },
+            'rest': {
+                title: 'e.g., Nap Time, Quiet Time, Bedtime',
+                description: 'Rest environment setup, calming activities, or sleep routine...'
+            },
+            'social': {
+                title: 'e.g., Playdate, Family Time, Group Activity',
+                description: 'Social interaction goals, people involved, or communication focus...'
+            },
+            'other': {
+                title: 'e.g., Custom Activity',
+                description: 'Detailed instructions for this custom activity...'
+            }
+        };
+        
+        if (placeholders[activityType]) {
+            titleInput.placeholder = placeholders[activityType].title;
+            descriptionInput.placeholder = placeholders[activityType].description;
+        }
     });
 </script>
 

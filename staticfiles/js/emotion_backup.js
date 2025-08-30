@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             mediaRecorder.start();
             startAudio.innerHTML = '<i class="fas fa-stop"></i> Stop Recording';
-            setTimeout(() => stopAudioRecording(), 5000); // Auto-stop after 5 seconds
+            recordingTimeout = setTimeout(() => stopAudioRecording(), 300000); // Auto-stop after 5 minutes
         } catch (error) {
             console.error('Microphone error:', error);
             showError(voiceEmotion, 'Microphone access denied');

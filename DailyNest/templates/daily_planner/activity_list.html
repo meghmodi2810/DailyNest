@@ -1,0 +1,760 @@
+{% extends 'base.html' %}
+
+{% block title %}Daily Activities - DailyNest{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <div class="dashboard-title">
+        <h1><i class="fas fa-calendar-alt"></i> Daily Activities Management</h1>
+        <p>View and manage all scheduled activities for individuals in your care</p>
+    </div>
+    <div class="dashboard-actions">
+        <button class="btn btn-primary" onclick="openDailyPlannerModal()">
+            <i class="fas fa-plus"></i> Create Activity
+        </button>
+        <a href="{% url 'caregiver_dashboard' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="stats-grid">
+    <div class="stat-card total">
+        <div class="stat-icon">
+            <i class="fas fa-calendar-check"></i>
+        </div>
+        <div class="stat-content">
+            <div class="stat-number">{{ total_activities }}</div>
+            <div class="stat-label">Total Activities</div>
+        </div>
+    </div>
+    <div class="stat-card pending">
+        <div class="stat-icon">
+            <i class="fas fa-clock"></i>
+        </div>
+        <div class="stat-content">
+            <div class="stat-number">{{ pending_count }}</div>
+            <div class="stat-label">Scheduled</div>
+        </div>
+    </div>
+    <div class="stat-card completed">
+        <div class="stat-icon">
+            <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="stat-content">
+            <div class="stat-number">{{ completed_count }}</div>
+            <div class="stat-label">Completed</div>
+        </div>
+    </div>
+    <div class="stat-card upcoming">
+        <div class="stat-icon">
+            <i class="fas fa-bell"></i>
+        </div>
+        <div class="stat-content">
+            <div class="stat-number">{{ upcoming_activities|length }}</div>
+            <div class="stat-label">Upcoming (7 days)</div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter Tabs -->
+<div class="filter-tabs">
+    <button class="filter-tab active" data-filter="all">
+        <i class="fas fa-list"></i> All Activities
+    </button>
+    <button class="filter-tab" data-filter="scheduled">
+        <i class="fas fa-clock"></i> Scheduled
+    </button>
+    <button class="filter-tab" data-filter="completed">
+        <i class="fas fa-check"></i> Completed
+    </button>
+    <button class="filter-tab" data-filter="upcoming">
+        <i class="fas fa-bell"></i> Upcoming
+    </button>
+</div>
+
+<!-- Activities List -->
+<div class="activities-container">
+    {% if activities %}
+        <div class="activities-grid">
+            {% for activity in activities %}
+                <div class="activity-card" data-status="{{ activity.status }}" data-upcoming="{% if activity.is_upcoming %}true{% else %}false{% endif %}">
+                    <div class="activity-header">
+                        <div class="activity-type">
+                            <i class="{{ activity.get_activity_type_icon }}"></i>
+                            <span>{{ activity.get_activity_type_display }}</span>
+                        </div>
+                        <div class="activity-priority priority-{{ activity.priority }}">
+                            {{ activity.get_priority_display }}
+                        </div>
+                    </div>
+                    
+                    <div class="activity-content">
+                        <h3 class="activity-title">{{ activity.title }}</h3>
+                        <p class="activity-description">{{ activity.description|truncatewords:20 }}</p>
+                        
+                        <div class="activity-details">
+                            <div class="detail-item">
+                                <i class="fas fa-user"></i>
+                                <span>{{ activity.assigned_to.name }}</span>
+                            </div>
+                            <div class="detail-item">
+                                <i class="fas fa-calendar"></i>
+                                <span>{{ activity.scheduled_date|date:"M d, Y" }}</span>
+                            </div>
+                            <div class="detail-item">
+                                <i class="fas fa-clock"></i>
+                                <span>{{ activity.scheduled_time|time:"H:i" }} ({{ activity.duration_minutes }}min)</span>
+                            </div>
+                            {% if activity.reminder_enabled %}
+                                <div class="detail-item">
+                                    <i class="fas fa-bell"></i>
+                                    <span>{{ activity.reminder_minutes_before }}min reminder</span>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="activity-status status-{{ activity.status }}">
+                        <i class="fas fa-circle"></i>
+                        <span>{{ activity.get_status_display }}</span>
+                    </div>
+                    
+                    <div class="activity-actions">
+                        {% if activity.status == 'scheduled' %}
+                            <button class="btn-action complete" onclick="updateActivityStatus({{ activity.id }}, 'completed')" title="Mark Complete">
+                                <i class="fas fa-check"></i>
+                            </button>
+                            <button class="btn-action edit" onclick="editActivity({{ activity.id }})" title="Edit Activity">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-action cancel" onclick="updateActivityStatus({{ activity.id }}, 'cancelled')" title="Cancel">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        {% endif %}
+                        <button class="btn-action delete" onclick="deleteActivity({{ activity.id }})" title="Delete Activity">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        <button class="btn-action view" onclick="viewActivityDetails({{ activity.id }})" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">
+                <i class="fas fa-calendar-plus"></i>
+            </div>
+            <h3>No Activities Created Yet</h3>
+            <p>Start creating structured daily activities for individuals in your care.</p>
+            <button class="btn btn-primary" onclick="openDailyPlannerModal()">
+                <i class="fas fa-plus"></i> Create First Activity
+            </button>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Daily Planner Modal (same as in caregiver dashboard) -->
+<div id="dailyPlannerModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">
+                <i class="fas fa-calendar-plus"></i>
+                Create Daily Activity
+            </h2>
+            <button class="modal-close" onclick="closeDailyPlannerModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <form id="dailyPlannerForm">
+            {% csrf_token %}
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="activityDate" class="form-label">Date</label>
+                    <input type="date" id="activityDate" name="scheduled_date" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="activityTime" class="form-label">Start Time</label>
+                    <input type="time" id="activityTime" name="scheduled_time" class="form-input" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="activityType" class="form-label">Activity Type</label>
+                    <select id="activityType" name="activity_type" class="form-select" required>
+                        <option value="">Select activity type...</option>
+                        <option value="routine">🕐 Routine - Daily habits and schedules</option>
+                        <option value="therapy">❤️ Therapy - Therapeutic sessions and exercises</option>
+                        <option value="learning">📚 Learning - Educational activities and study</option>
+                        <option value="play">🎮 Play - Fun activities and games</option>
+                        <option value="meal">🍽️ Meal - Eating and nutrition time</option>
+                        <option value="rest">🛏️ Rest - Sleep and relaxation periods</option>
+                        <option value="social">👥 Social - Interaction with others</option>
+                        <option value="other">⭐ Other - Custom activities</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="activityDuration" class="form-label">Duration (minutes)</label>
+                    <input type="number" id="activityDuration" name="duration_minutes" class="form-input" min="5" max="480" value="30" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="activityTitle" class="form-label">Activity Title</label>
+                <input type="text" id="activityTitle" name="title" class="form-input" placeholder="e.g., Morning Brushing Teeth, Math Lesson, Playground Time" required>
+            </div>
+
+            <div class="form-group">
+                <label for="activityDescription" class="form-label">Description & Instructions</label>
+                <textarea id="activityDescription" name="description" class="form-textarea" placeholder="Detailed instructions, materials needed, or special notes for this activity..." required></textarea>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Priority Level</label>
+                <div class="priority-selector">
+                    <div class="priority-option low" onclick="selectPriority('low')">
+                        <i class="fas fa-leaf"></i> Low
+                    </div>
+                    <div class="priority-option medium selected" onclick="selectPriority('medium')">
+                        <i class="fas fa-star"></i> Medium
+                    </div>
+                    <div class="priority-option high" onclick="selectPriority('high')">
+                        <i class="fas fa-exclamation"></i> High
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="activityRecipient" class="form-label">Assign To</label>
+                    <select id="activityRecipient" name="assigned_to" class="form-select" required>
+                        <option value="">Select individual...</option>
+                        {% for user in autistic_users %}
+                            <option value="{{ user.id }}">{{ user.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="reminderMinutes" class="form-label">Reminder (minutes before)</label>
+                    <select id="reminderMinutes" name="reminder_minutes_before" class="form-select">
+                        <option value="5">5 minutes</option>
+                        <option value="10">10 minutes</option>
+                        <option value="15" selected>15 minutes</option>
+                        <option value="30">30 minutes</option>
+                        <option value="60">1 hour</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="caregiverNotes" class="form-label">Caregiver Notes (Private)</label>
+                <textarea id="caregiverNotes" name="caregiver_notes" class="form-textarea" placeholder="Private notes for caregivers about this activity..."></textarea>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeDailyPlannerModal()">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-calendar-check"></i> Create Activity
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .dashboard-title h1 {
+        font-family: 'Poppins', sans-serif;
+        font-size: 2.2rem;
+        font-weight: 700;
+        margin: 0;
+        background: var(--secondary-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .dashboard-actions {
+        display: flex;
+        gap: 1rem;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: var(--surface-light);
+        border: 2px solid #e2e8f0;
+        border-radius: var(--border-radius-lg);
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        transition: var(--transition);
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .stat-card.total { border-left: 4px solid var(--primary-color); }
+    .stat-card.pending { border-left: 4px solid #f59e0b; }
+    .stat-card.completed { border-left: 4px solid #10b981; }
+    .stat-card.upcoming { border-left: 4px solid #8b5cf6; }
+
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: white;
+    }
+
+    .stat-card.total .stat-icon { background: var(--primary-color); }
+    .stat-card.pending .stat-icon { background: #f59e0b; }
+    .stat-card.completed .stat-icon { background: #10b981; }
+    .stat-card.upcoming .stat-icon { background: #8b5cf6; }
+
+    .stat-number {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .stat-label {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+    }
+
+    .filter-tabs {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 2rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .filter-tab {
+        padding: 1rem 1.5rem;
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: var(--transition);
+        border-bottom: 3px solid transparent;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 500;
+    }
+
+    .filter-tab.active,
+    .filter-tab:hover {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+    }
+
+    .activities-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .activity-card {
+        background: var(--surface-light);
+        border: 2px solid #e2e8f0;
+        border-radius: var(--border-radius-lg);
+        padding: 1.5rem;
+        transition: var(--transition);
+        position: relative;
+    }
+
+    .activity-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg);
+        border-color: var(--primary-color);
+    }
+
+    .activity-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .activity-type {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: rgba(99, 102, 241, 0.1);
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--primary-color);
+    }
+
+    .activity-priority {
+        padding: 0.25rem 0.75rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .priority-low { background: rgba(34, 197, 94, 0.1); color: #059669; }
+    .priority-medium { background: rgba(245, 158, 11, 0.1); color: #d97706; }
+    .priority-high { background: rgba(239, 68, 68, 0.1); color: #dc2626; }
+
+    .activity-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: var(--text-primary);
+    }
+
+    .activity-description {
+        color: var(--text-secondary);
+        line-height: 1.5;
+        margin-bottom: 1rem;
+    }
+
+    .activity-details {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .detail-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+    }
+
+    .detail-item i {
+        width: 16px;
+        color: var(--primary-color);
+    }
+
+    .activity-status {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        font-weight: 500;
+    }
+
+    .status-scheduled { color: #f59e0b; }
+    .status-completed { color: #10b981; }
+    .status-cancelled { color: #ef4444; }
+    .status-in_progress { color: #3b82f6; }
+
+    .activity-actions {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: flex-end;
+    }
+
+    .btn-action {
+        width: 36px;
+        height: 36px;
+        border: none;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: var(--transition);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+    }
+
+    .btn-action.complete { background: #10b981; color: white; }
+    .btn-action.edit { background: #3b82f6; color: white; }
+    .btn-action.cancel { background: #ef4444; color: white; }
+    .btn-action.delete { background: #ef4444; color: white; }
+    .btn-action.view { background: var(--primary-color); color: white; }
+
+    .btn-action:hover {
+        transform: scale(1.1);
+        box-shadow: var(--shadow-md);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: var(--text-secondary);
+    }
+
+    .empty-icon {
+        font-size: 4rem;
+        color: var(--primary-color);
+        margin-bottom: 1rem;
+    }
+
+    .empty-state h3 {
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        color: var(--text-primary);
+    }
+
+    /* Modal styles (reuse from caregiver dashboard) */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+    }
+
+    .modal.active {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-content {
+        background: var(--surface-light);
+        border-radius: var(--border-radius-lg);
+        padding: 2rem;
+        width: 90%;
+        max-width: 600px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: var(--shadow-xl);
+    }
+
+    /* Responsive design */
+    @media (max-width: 768px) {
+        .activities-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .filter-tabs {
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+    }
+</style>
+
+<script>
+    let selectedPriority = 'medium';
+
+    // Filter functionality
+    document.querySelectorAll('.filter-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            // Update active tab
+            document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Filter activities
+            const filter = this.dataset.filter;
+            const activities = document.querySelectorAll('.activity-card');
+            
+            activities.forEach(activity => {
+                const status = activity.dataset.status;
+                const isUpcoming = activity.dataset.upcoming === 'true';
+                
+                let show = false;
+                switch(filter) {
+                    case 'all':
+                        show = true;
+                        break;
+                    case 'scheduled':
+                        show = status === 'scheduled';
+                        break;
+                    case 'completed':
+                        show = status === 'completed';
+                        break;
+                    case 'upcoming':
+                        show = isUpcoming;
+                        break;
+                }
+                
+                activity.style.display = show ? 'block' : 'none';
+            });
+        });
+    });
+
+    // Activity management functions
+    function updateActivityStatus(activityId, newStatus) {
+        const confirmMessage = newStatus === 'completed' ? 
+            'Mark this activity as completed?' : 
+            `Change activity status to ${newStatus}?`;
+            
+        if (confirm(confirmMessage)) {
+            const formData = new FormData();
+            formData.append('status', newStatus);
+            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+            
+            fetch(`/daily-planner/${activityId}/update/`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error updating activity: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating activity');
+            });
+        }
+    }
+
+    function deleteActivity(activityId) {
+        if (confirm('Are you sure you want to delete this activity? This action cannot be undone.')) {
+            const formData = new FormData();
+            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+            
+            fetch(`/daily-planner/${activityId}/delete/`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error deleting activity: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error deleting activity');
+            });
+        }
+    }
+
+    function editActivity(activityId) {
+        // TODO: Implement edit functionality
+        alert('Edit functionality coming soon!');
+    }
+
+    function viewActivityDetails(activityId) {
+        // TODO: Implement view details modal
+        alert('View details functionality coming soon!');
+    }
+
+    // Modal functions (same as caregiver dashboard)
+    function openDailyPlannerModal() {
+        const modal = document.getElementById('dailyPlannerModal');
+        modal.classList.add('active');
+        
+        // Set default date to today
+        const today = new Date();
+        document.getElementById('activityDate').value = today.toISOString().split('T')[0];
+        
+        // Set default time to current time + 1 hour
+        const currentTime = new Date();
+        currentTime.setHours(currentTime.getHours() + 1);
+        document.getElementById('activityTime').value = currentTime.toTimeString().slice(0, 5);
+    }
+
+    function closeDailyPlannerModal() {
+        const modal = document.getElementById('dailyPlannerModal');
+        modal.classList.remove('active');
+        
+        // Reset form
+        document.getElementById('dailyPlannerForm').reset();
+        selectedPriority = 'medium';
+        updatePrioritySelection();
+    }
+
+    function selectPriority(priority) {
+        selectedPriority = priority;
+        updatePrioritySelection();
+    }
+
+    function updatePrioritySelection() {
+        const options = document.querySelectorAll('.priority-option');
+        options.forEach(option => {
+            option.classList.remove('selected');
+            if (option.classList.contains(selectedPriority)) {
+                option.classList.add('selected');
+            }
+        });
+    }
+
+    // Handle form submission
+    document.getElementById('dailyPlannerForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        formData.append('priority', selectedPriority);
+        
+        fetch('/daily-planner/create/', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Daily activity created successfully!');
+                closeDailyPlannerModal();
+                location.reload();
+            } else {
+                alert('Error creating activity: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error creating activity. Please try again.');
+        });
+    });
+
+    // Close modal when clicking outside
+    document.getElementById('dailyPlannerModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeDailyPlannerModal();
+        }
+    });
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+        updatePrioritySelection();
+    });
+</script>
+
+{% endblock %}

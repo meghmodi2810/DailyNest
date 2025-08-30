@@ -71,6 +71,7 @@ urlpatterns = [
     path('games/', views.games_hub, name='games_hub'),
     path('games/dashboard/', views.games_hub, name='games_dashboard'),  # Redirect old dashboard to new hub
     path('games/calm-maze/', views.calm_maze, name='calm_maze'),
+    path('games/jigsaw-puzzle/', views.jigsaw_puzzle, name='jigsaw_puzzle'),
     path('games/bubble-pop/', views.bubble_pop, name='bubble_pop'),
     path('games/memory-match/', views.memory_match, name='memory_match'),
     path('games/breathing-garden/', views.breathing_garden, name='breathing_garden'),
@@ -78,6 +79,13 @@ urlpatterns = [
     path('games/<str:game_type>/', views.play_game, name='play_game'),
     path('games/save-result/', views.save_game_result, name='save_game_result'),
     path('games/progress/', views.game_progress, name='game_progress'),
+    
+    # Daily Planner URLs
+    path('daily-planner/create/', views.create_daily_activity, name='create_daily_activity'),
+    path('daily-planner/list/', views.daily_planner_list, name='daily_planner_list'),
+    path('daily-planner/<int:activity_id>/update/', views.update_activity_status, name='update_activity_status'),
+    path('daily-planner/<int:activity_id>/delete/', views.delete_daily_activity, name='delete_daily_activity'),
+    path('api/upcoming-activities/', views.get_upcoming_activities, name='get_upcoming_activities'),
     
     # Caregiver Mode URLs
     path('caregiver-mode/setup/', views.caregiver_mode_setup, name='caregiver_mode_setup'),

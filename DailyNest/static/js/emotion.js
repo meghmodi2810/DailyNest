@@ -19,6 +19,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let mediaRecorder = null;
     let audioChunks = [];
     let isProcessing = false;
+    let isRecording = false;
+    let startTime = null;
+    let timerInterval = null;
+    let recordingTimeout = null;
+    const MAX_RECORDING_TIME = 5 * 60 * 1000; // 5 minutes
 
     // Mode switching
     window.switchMode = function(mode) {
@@ -132,41 +137,46 @@ document.addEventListener('DOMContentLoaded', () => {
     if (startRecording) {
         startRecording.addEventListener('click', async () => {
             try {
-                console.log('Starting recording...');
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    audio: true
-                });
-                
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(stream);
                 audioChunks = [];
 
-                mediaRecorder.ondataavailable = event => {
+                mediaRecorder.ondataavailable = (event) => {
                     if (event.data.size > 0) {
                         audioChunks.push(event.data);
                     }
                 };
 
-                mediaRecorder.onstop = () => {
-                    console.log('Recording stopped, processing...');
-                    processAudio();
-                    stream.getTracks().forEach(track => track.stop());
+                mediaRecorder.onstart = () => {
+                    isRecording = true;
+                    startTime = Date.now();
+                    timerInterval = setInterval(updateTimer, 1000);
                 };
 
-                mediaRecorder.start();
-                
-                // Update UI
-                startRecording.style.display = 'none';
+                mediaRecorder.onstop = () => {
+                    isRecording = false;
+                    clearInterval(timerInterval);
+                    if (recordingTimeout) {
+                        clearTimeout(recordingTimeout);
+                        recordingTimeout = null;
+                    }
+                    processAudio();
+                };
+
+                mediaRecorder.start(1000); // Request data every second
                 if (stopRecording) stopRecording.style.display = 'inline-flex';
+                startRecording.style.display = 'none';
                 if (micIcon) micIcon.className = 'fas fa-microphone fa-3x recording';
-                if (audioStatus) audioStatus.textContent = 'Recording... Speak now!';
-                
-                // Auto-stop after 5 seconds
-                setTimeout(() => {
+                if (audioStatus) audioStatus.textContent = 'Recording... 00:00 (Max 5:00)';
+
+                // Set maximum recording time
+                recordingTimeout = setTimeout(() => {
                     if (mediaRecorder && mediaRecorder.state === 'recording') {
                         mediaRecorder.stop();
+                        if (audioStatus) audioStatus.textContent = 'Maximum recording time (5 minutes) reached';
                     }
-                }, 5000);
-                
+                }, MAX_RECORDING_TIME);
+
             } catch (error) {
                 console.error('Microphone error:', error);
                 showResult('Microphone access denied', 'error');
@@ -179,6 +189,10 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Manual stop recording...');
             if (mediaRecorder && mediaRecorder.state === 'recording') {
                 mediaRecorder.stop();
+            }
+            if (recordingTimeout) {
+                clearTimeout(recordingTimeout);
+                recordingTimeout = null;
             }
         });
     }
@@ -235,6 +249,16 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Audio processing error:', error);
             showResult('Processing failed', 'error');
+        }
+    }
+
+    function updateTimer() {
+        if (!startTime || !isRecording) return;
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const minutes = Math.floor(elapsed / 60);
+        const seconds = elapsed % 60;
+        if (audioStatus) {
+            audioStatus.textContent = `Recording... ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')} (Max 5:00)`;
         }
     }
 

@@ -164,12 +164,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 audioStatus.textContent = 'Recording... Speak now!';
                 startAudioVisualization();
                 
-                // Auto-stop after 5 seconds
-                setTimeout(() => {
+                // Set maximum recording time (5 minutes)
+                recordingTimer = setTimeout(() => {
                     if (mediaRecorder && mediaRecorder.state === 'recording') {
                         mediaRecorder.stop();
                     }
-                }, 5000);
+                }, MAX_RECORDING_TIME);
                 
             } catch (error) {
                 console.error('Microphone access error:', error);
