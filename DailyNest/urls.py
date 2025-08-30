@@ -83,7 +83,7 @@ urlpatterns = [
     # Daily Planner URLs
     path('daily-planner/create/', views.create_daily_activity, name='create_daily_activity'),
     path('daily-planner/list/', views.daily_planner_list, name='daily_planner_list'),
-    path('daily-planner/<int:activity_id>/update/', views.update_activity_status, name='update_activity_status'),
+    path('daily-planner/<int:activity_id>/update/', views.update_daily_activity, name='update_daily_activity'),
     path('daily-planner/<int:activity_id>/delete/', views.delete_daily_activity, name='delete_daily_activity'),
     path('api/upcoming-activities/', views.get_upcoming_activities, name='get_upcoming_activities'),
     

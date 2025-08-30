@@ -123,20 +123,20 @@
                     
                     <div class="activity-actions">
                         {% if activity.status == 'scheduled' %}
-                            <button class="btn-action complete" onclick="updateActivityStatus({{ activity.id }}, 'completed')" title="Mark Complete">
+                            <button class="btn-action complete" onclick="updateActivityStatus('{{ activity.id }}', 'completed')" title="Mark Complete">
                                 <i class="fas fa-check"></i>
                             </button>
-                            <button class="btn-action edit" onclick="editActivity({{ activity.id }})" title="Edit Activity">
+                            <button class="btn-action edit" onclick="editActivity('{{ activity.id }}')" title="Edit Activity">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button class="btn-action cancel" onclick="updateActivityStatus({{ activity.id }}, 'cancelled')" title="Cancel">
+                            <button class="btn-action cancel" onclick="updateActivityStatus('{{ activity.id }}', 'cancelled')" title="Cancel">
                                 <i class="fas fa-times"></i>
                             </button>
                         {% endif %}
-                        <button class="btn-action delete" onclick="deleteActivity({{ activity.id }})" title="Delete Activity">
+                        <button class="btn-action delete" onclick="deleteActivity('{{ activity.id }}')" title="Delete Activity">
                             <i class="fas fa-trash"></i>
                         </button>
-                        <button class="btn-action view" onclick="viewActivityDetails({{ activity.id }})" title="View Details">
+                        <button class="btn-action view" onclick="viewActivityDetails('{{ activity.id }}')" title="View Details">
                             <i class="fas fa-eye"></i>
                         </button>
                     </div>
@@ -229,26 +229,15 @@
                 </div>
             </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="activityRecipient" class="form-label">Assign To</label>
-                    <select id="activityRecipient" name="assigned_to" class="form-select" required>
-                        <option value="">Select individual...</option>
-                        {% for user in autistic_users %}
-                            <option value="{{ user.id }}">{{ user.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="reminderMinutes" class="form-label">Reminder (minutes before)</label>
-                    <select id="reminderMinutes" name="reminder_minutes_before" class="form-select">
-                        <option value="5">5 minutes</option>
-                        <option value="10">10 minutes</option>
-                        <option value="15" selected>15 minutes</option>
-                        <option value="30">30 minutes</option>
-                        <option value="60">1 hour</option>
-                    </select>
-                </div>
+            <div class="form-group">
+                <label for="reminderMinutes" class="form-label">Reminder (minutes before)</label>
+                <select id="reminderMinutes" name="reminder_minutes_before" class="form-select">
+                    <option value="5">5 minutes</option>
+                    <option value="10">10 minutes</option>
+                    <option value="15" selected>15 minutes</option>
+                    <option value="30">30 minutes</option>
+                    <option value="60">1 hour</option>
+                </select>
             </div>
 
             <div class="form-group">

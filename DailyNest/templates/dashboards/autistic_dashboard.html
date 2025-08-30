@@ -174,6 +174,44 @@
         </div>
     </div>
 
+    <!-- Upcoming Activities -->
+    <div class="card">
+        <h3><i class="fas fa-calendar-check"></i> Upcoming Activities</h3>
+        <div class="activities-list">
+            {% for activity in upcoming_activities %}
+                <div class="activity-item {% if activity.scheduled_date == today %}today{% elif activity.is_due_soon %}due-soon{% endif %}">
+                    <div class="activity-icon">
+                        <i class="{{ activity.get_activity_type_icon }}"></i>
+                    </div>
+                    <div class="activity-details">
+                        <div class="activity-header">
+                            <h4 class="activity-title">{{ activity.title }}</h4>
+                            <span class="activity-priority priority-{{ activity.priority }}">
+                                {{ activity.get_priority_display }}
+                            </span>
+                        </div>
+                        <p class="activity-description">{{ activity.description|truncatewords:15 }}</p>
+                        <div class="activity-meta">
+                            <span><i class="fas fa-calendar"></i> {{ activity.scheduled_date|date:"M d" }}</span>
+                            <span><i class="fas fa-clock"></i> {{ activity.scheduled_time|time:"g:i A" }}</span>
+                            <span><i class="fas fa-hourglass-half"></i> {{ activity.duration_minutes }}min</span>
+                        </div>
+                    </div>
+                    <div class="activity-actions">
+                        <button class="btn-action complete" onclick="markActivityComplete('{{ activity.id }}')" title="Mark Complete">
+                            <i class="fas fa-check"></i>
+                        </button>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="empty-state">
+                    <i class="fas fa-calendar-plus"></i>
+                    <p>No upcoming activities. <a href="{% url 'daily_planner_list' %}">Create your first activity!</a></p>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
     <!-- Daily Wellness Tips -->
     <div class="card wellness-tips-card">
         <div class="wellness-header">
@@ -1503,6 +1541,32 @@
 
     function currentTip(index) {
         showTip(index);
+    }
+
+    // Activity management function
+    function markActivityComplete(activityId) {
+        if (confirm('Mark this activity as completed?')) {
+            const formData = new FormData();
+            formData.append('status', 'completed');
+            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+            
+            fetch(`/daily-planner/${activityId}/update/`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error updating activity: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating activity');
+            });
+        }
     }
 
     // Auto-rotate tips every 8 seconds

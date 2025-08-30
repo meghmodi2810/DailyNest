@@ -386,7 +386,7 @@ def caregiver_dashboard(request):
 @login_required
 def autistic_dashboard(request):
     """Autistic person dashboard with personal tools and upcoming notes"""
-    from .models import CareRelationship, ScheduledNote
+    from .models import CareRelationship, ScheduledNote, DailyPlannerActivity
     from datetime import datetime, timedelta
     
     recent_emotions = EmotionRecord.objects.filter(user=request.user).order_by('-timestamp')[:5]
@@ -400,6 +400,15 @@ def autistic_dashboard(request):
         scheduled_time__date__gte=today,
         status='pending'  # Assuming 'pending' is one of the status values
     ).order_by('scheduled_time')[:5]  # Get up to 5 upcoming notes
+    
+    # Get upcoming daily planner activities (for today and next 7 days)
+    end_date = today + timedelta(days=7)
+    upcoming_activities = DailyPlannerActivity.objects.filter(
+        assigned_to=request.user,
+        scheduled_date__gte=today,
+        scheduled_date__lte=end_date,
+        status__in=['scheduled', 'in_progress']
+    ).order_by('scheduled_date', 'scheduled_time')[:5]
     
     # Check if emotion check is needed
     show_emotion_check = False
@@ -443,6 +452,8 @@ def autistic_dashboard(request):
         'recent_emotions': recent_emotions,
         'recent_chats': recent_chats,
         'upcoming_notes': upcoming_notes,
+        'upcoming_activities': upcoming_activities,
+        'today': today,
         'show_emotion_check': show_emotion_check,
     }
     return render(request, 'dashboards/autistic_dashboard.html', context)
@@ -1833,11 +1844,23 @@ def caregiver_mode_dashboard(request):
         timestamp__gte=week_ago
     ).order_by('-timestamp')
     
+    # Get upcoming daily planner activities
+    today = timezone.now().date()
+    end_date = today + timedelta(days=7)
+    upcoming_activities = DailyPlannerActivity.objects.filter(
+        assigned_to=user,
+        scheduled_date__gte=today,
+        scheduled_date__lte=end_date,
+        status__in=['scheduled', 'in_progress']
+    ).order_by('scheduled_date', 'scheduled_time')[:10]
+    
     context = {
         'user': user,
         'recent_journals': recent_journals,
         'recent_emotions': recent_emotions,
         'weekly_emotions': weekly_emotions,
+        'upcoming_activities': upcoming_activities,
+        'today': today,
         'journal_count': JournalEntry.objects.filter(user=user).count(),
         'emotion_count': EmotionRecord.objects.filter(user=user).count(),
     }
@@ -2154,12 +2177,16 @@ def create_daily_activity(request):
         reminder_minutes_before = int(request.POST.get('reminder_minutes_before', 15))
         caregiver_notes = request.POST.get('caregiver_notes', '')
         
-        # Validate required fields
-        if not all([title, description, activity_type, scheduled_date, scheduled_time, assigned_to_id]):
+        # Validate required fields (removed assigned_to_id requirement)
+        if not all([title, description, activity_type, scheduled_date, scheduled_time]):
             return JsonResponse({'success': False, 'error': 'All required fields must be filled'})
         
-        # Get assigned user
-        assigned_to = get_object_or_404(CustomUser, id=assigned_to_id)
+        # For personal daily planner, assign to current user
+        # If assigned_to_id is provided, use it; otherwise use current user
+        if assigned_to_id:
+            assigned_to = get_object_or_404(CustomUser, id=assigned_to_id)
+        else:
+            assigned_to = request.user
         
         # Create the activity
         activity = DailyPlannerActivity.objects.create(
@@ -2184,6 +2211,32 @@ def create_daily_activity(request):
         
     except Exception as e:
         logger.error(f"Error creating daily activity: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@login_required
+@require_POST
+def update_daily_activity(request, activity_id):
+    """Update daily planner activity status"""
+    try:
+        activity = get_object_or_404(DailyPlannerActivity, id=activity_id, assigned_to=request.user)
+        
+        new_status = request.POST.get('status')
+        if new_status not in ['scheduled', 'in_progress', 'completed', 'cancelled', 'missed']:
+            return JsonResponse({'success': False, 'error': 'Invalid status'})
+        
+        activity.status = new_status
+        if new_status == 'completed':
+            activity.mark_completed()
+        else:
+            activity.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Activity status updated to {new_status}'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error updating daily activity: {str(e)}")
         return JsonResponse({'success': False, 'error': str(e)})
 
 @login_required
