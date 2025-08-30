@@ -62,6 +62,30 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'config.urls'
 
+# Email Configuration
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 465
+EMAIL_USE_SSL = True  # Use SSL for Gmail with port 465
+EMAIL_USE_TLS = False  # Disable TLS when using SSL
+EMAIL_HOST_USER = 'meghmodi4ever@gmail.com'  # Your Gmail address
+DEFAULT_FROM_EMAIL = 'meghmodi4ever@gmail.com'  # Default sender email
+
+# Load SMTP credentials from JSON file
+import json
+CREDENTIALS_FILE = os.path.join(BASE_DIR, 'DailyNest/credentials/SMTP_credentials.json')
+try:
+    with open(CREDENTIALS_FILE) as f:
+        credentials = json.load(f)
+    EMAIL_HOST_USER = credentials.get('SMTP_USER', '')
+    EMAIL_HOST_PASSWORD = credentials.get('SMTP_API_KEY', '')
+    DEFAULT_FROM_EMAIL = credentials.get('FROM_EMAIL', '')
+    EMAIL_HOST = credentials.get('SMTP_HOST', 'smtp.gmail.com')
+    EMAIL_PORT = credentials.get('SMTP_PORT', 587)
+except Exception as e:
+    print(f"Error loading SMTP credentials: {e}")
+
+# Static files
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'DailyNest/static'),

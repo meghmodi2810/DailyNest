@@ -7,7 +7,9 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods, require_POST
 from django.contrib.auth.hashers import check_password
 from .models import CustomUser, EmotionRecord, CareRelationship, ChatMessage, UserPreference, PasswordResetOTP, JournalEntry, CareNote, ScheduledNote
-from .forms import CustomUserRegistrationForm, CustomLoginForm, CareNoteForm, ForgotPasswordForm, ResetPasswordForm, ScheduledNoteForm, UserPreferenceForm, UserProfileForm
+from .forms import (CustomUserRegistrationForm, CustomLoginForm, CareNoteForm, 
+                         ForgotPasswordForm, ResetPasswordForm, ScheduledNoteForm, 
+                         UserPreferenceForm, UserProfileForm, OTPVerificationForm)
 from .ml_models_fallback import get_emotion_detector, get_speech_processor
 
 # Import enhanced chatbot
@@ -41,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 # Authentication Views
 def login_view(request):
-    """Custom login view with role-based authentication"""
+    """Custom login view with role-based authentication and email verification check"""
     if request.user.is_authenticated:
         return redirect_to_dashboard(request.user)
     
@@ -49,51 +51,199 @@ def login_view(request):
         form = CustomLoginForm(request, data=request.POST)
         if form.is_valid():
             user = form.get_user()
+            
+            # Check if email is verified
+            if not user.is_email_verified:
+                # If not verified, redirect to verification page
+                messages.warning(request, 'Please verify your email address before logging in.')
+                return redirect('verify_email', user_id=user.id)
+                
             login(request, user)
             messages.success(request, f'Welcome back, {user.name}!')
             return redirect_to_dashboard(user)
         else:
-            messages.error(request, 'Please correct the errors below.')
+            # Check if the error is due to unverified email
+            email = form.cleaned_data.get('username')  # username is actually email
+            if email:
+                try:
+                    user = CustomUser.objects.get(email=email)
+                    if not user.is_email_verified:
+                        messages.warning(request, 'Please verify your email address before logging in.')
+                        return redirect('verify_email', user_id=user.id)
+                except CustomUser.DoesNotExist:
+                    pass
+                    
+            messages.error(request, 'Invalid email or password. Please try again.')
     else:
         form = CustomLoginForm()
     
     return render(request, 'auth/login.html', {'form': form})
 
+def verify_email_view(request, user_id, token=None):
+    """Handle email verification via token or manual code entry"""
+    if request.user.is_authenticated and request.user.id != user_id:
+        messages.warning(request, 'You are already logged in with a different account.')
+        return redirect('dashboard')
+    
+    user = get_object_or_404(CustomUser, id=user_id)
+    
+    # If token is provided in URL, verify it directly
+    if token and str(user.email_verification_token) == token:
+        return complete_email_verification(request, user)
+    
+    # Handle POST request for manual code entry
+    if request.method == 'POST':
+        form = EmailVerificationForm(request.POST, user=user)
+        if form.is_valid():
+            return complete_email_verification(request, user)
+    else:
+        form = EmailVerificationForm(user=user)
+    
+    return render(request, 'auth/verify_email.html', {
+        'form': form,
+        'email': user.email,
+        'user_id': user.id
+    })
+
+def complete_email_verification(request, user):
+    """Complete the email verification process"""
+    user.is_email_verified = True
+    user.save()
+    
+    # Log the user in after verification
+    login(request, user)
+    messages.success(request, 'Your email has been verified successfully!')
+    
+    # Redirect to the appropriate dashboard
+    return redirect_to_dashboard(user)
+
+def resend_verification_email(request, user_id):
+    """Resend verification email"""
+    user = get_object_or_404(CustomUser, id=user_id)
+    
+    # Update verification token and timestamp
+    import uuid
+    from django.utils import timezone
+    user.email_verification_token = uuid.uuid4()
+    user.email_verification_sent_at = timezone.now()
+    user.save()
+    
+    # Send verification email
+    from django.core.mail import send_mail
+    from django.template.loader import render_to_string
+    from django.utils.html import strip_tags
+    
+    verification_code = str(user.email_verification_token)[:6]
+    subject = 'Verify your email address'
+    
+    # Render email template
+    html_message = render_to_string('emails/email_verification.html', {
+        'user': user,
+        'verification_code': verification_code,
+        'verification_link': request.build_absolute_uri(
+            f'/verify-email/{user.id}/{user.email_verification_token}/'
+        )
+    })
+    
+    plain_message = strip_tags(html_message)
+    from_email = 'noreply@dailynest.com'  # Update with your email
+    to_email = user.email
+    
+    try:
+        send_mail(
+            subject,
+            plain_message,
+            from_email,
+            [to_email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+        messages.success(request, f'Verification email has been resent to {user.email}.')
+    except Exception as e:
+        messages.error(request, f'Failed to resend verification email. Error: {str(e)}')
+    
+    return redirect('verify_email', user_id=user.id)
+
 def register_view(request):
-    """User registration view with caregiver invitation system"""
+    """User registration view with email verification and caregiver invitation system"""
     if request.user.is_authenticated:
         return redirect_to_dashboard(request.user)
     
     if request.method == 'POST':
         form = CustomUserRegistrationForm(request.POST)
         if form.is_valid():
-            user = form.save()
+            user = form.save(commit=False)
             
-            # Handle caregiver invitation for autistic persons
-            if (user.role == 'autistic_person' and 
-                form.cleaned_data.get('caregiver_email')):
-                
-                from .models import CaregiverInvitation
-                import uuid
-                from datetime import datetime, timedelta
-                
-                # Create invitation
-                invitation = CaregiverInvitation.objects.create(
-                    autistic_person=user,
-                    caregiver_email=form.cleaned_data['caregiver_email'],
-                    relationship_type=form.cleaned_data.get('relationship_type', 'guardian'),
-                    invitation_token=str(uuid.uuid4()),
-                    message=form.cleaned_data.get('invitation_message', ''),
-                    expires_at=datetime.now() + timedelta(days=7)
+            # Generate verification token and save user
+            import uuid
+            from django.utils import timezone
+            user.email_verification_token = uuid.uuid4()
+            user.email_verification_sent_at = timezone.now()
+            user.is_email_verified = False
+            user.save()
+            
+            # Send verification email
+            from django.core.mail import send_mail
+            from django.template.loader import render_to_string
+            from django.utils.html import strip_tags
+            
+            verification_code = str(user.email_verification_token)[:6]
+            subject = 'Verify your email address'
+            
+            # Render email template
+            html_message = render_to_string('emails/email_verification.html', {
+                'user': user,
+                'verification_code': verification_code,
+                'verification_link': request.build_absolute_uri(
+                    f'/verify-email/{user.id}/{user.email_verification_token}/'
+                )
+            })
+            
+            plain_message = strip_tags(html_message)
+            from_email = 'noreply@dailynest.com'  # Update with your email
+            to_email = user.email
+            
+            try:
+                send_mail(
+                    subject,
+                    plain_message,
+                    from_email,
+                    [to_email],
+                    html_message=html_message,
+                    fail_silently=False,
                 )
                 
-                # TODO: Send email invitation (for now, just show success message)
-                messages.success(request, f'Account created successfully! Invitation sent to {invitation.caregiver_email}')
-            else:
-                messages.success(request, f'Account created successfully for {user.name}!')
-            
-            login(request, user)
-            return redirect_to_dashboard(user)
+                # Handle caregiver invitation for autistic persons
+                if (user.role == 'autistic_person' and 
+                    form.cleaned_data.get('caregiver_email')):
+                    
+                    from .models import CaregiverInvitation
+                    from datetime import datetime, timedelta
+                    
+                    # Create invitation
+                    invitation = CaregiverInvitation.objects.create(
+                        autistic_person=user,
+                        caregiver_email=form.cleaned_data['caregiver_email'],
+                        relationship_type=form.cleaned_data.get('relationship_type', 'guardian'),
+                        invitation_token=str(uuid.uuid4()),
+                        message=form.cleaned_data.get('invitation_message', ''),
+                        expires_at=datetime.now() + timedelta(days=7)
+                    )
+                    
+                    # TODO: Send caregiver invitation email
+                    messages.success(request, f'Account created! Please check your email to verify your account. Invitation will be sent to {invitation.caregiver_email} after verification.')
+                else:
+                    messages.success(request, f'Account created! Please check your email to verify your account.')
+                
+                # Redirect to verification page instead of logging in
+                return redirect('verify_email', user_id=user.id)
+                
+            except Exception as e:
+                # If email fails, delete the user and show error
+                user.delete()
+                messages.error(request, f'Failed to send verification email. Please try again. Error: {str(e)}')
+                return redirect('register')
+                
         else:
             messages.error(request, 'Please correct the errors below.')
     else:
@@ -822,42 +972,72 @@ def profile_view(request):
 @csrf_exempt
 def forgot_password_view(request):
     """Handle forgot password request"""
+    if request.user.is_authenticated:
+        return redirect('dashboard')
+        
     if request.method == 'POST':
         form = ForgotPasswordForm(request.POST)
         if form.is_valid():
-            email = form.cleaned_data['email']
+            email = form.cleaned_data['email'].lower()
             try:
                 user = CustomUser.objects.get(email=email)
                 
                 # Generate 6-digit OTP
                 otp_code = str(random.randint(100000, 999999))
                 
-                # Create OTP record
+                # Create OTP record (invalidate any existing OTPs for this user)
+                PasswordResetOTP.objects.filter(user=user).delete()
                 otp_record = PasswordResetOTP.objects.create(
                     user=user,
                     otp_code=otp_code,
                     expires_at=timezone.now() + timedelta(minutes=10)
                 )
                 
-                # Send OTP email (you'll need to configure email settings)
+                # Prepare email content
+                subject = 'Password Reset OTP - DailyNest'
+                message = f'''
+                Hello {user.name},
+                
+                You have requested to reset your password. Please use the following OTP to proceed:
+                
+                OTP: {otp_code}
+                
+                This OTP will expire in 10 minutes.
+                
+                If you did not request this password reset, please ignore this email.
+                
+                Best regards,
+                The DailyNest Team
+                '''
+                
+                # Send OTP email
                 try:
                     send_mail(
-                        'Password Reset OTP - DailyNest',
-                        f'Your password reset OTP is: {otp_code}\n\nThis OTP will expire in 10 minutes.',
-                        settings.DEFAULT_FROM_EMAIL,
-                        [email],
+                        subject=subject.strip(),
+                        message=message.strip(),
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[email],
                         fail_silently=False,
                     )
-                    messages.success(request, f'OTP sent to {email}. Please check your email.')
-                    return redirect('verify_otp', user_id=user.id)
-                except Exception as e:
-                    messages.error(request, f'Error sending email: {str(e)}')
-                    # For development, show OTP in message
-                    messages.info(request, f'Development mode - OTP: {otp_code}')
+                    messages.success(request, f'We\'ve sent an OTP to {email}. Please check your inbox (and spam folder).')
                     return redirect('verify_otp', user_id=user.id)
                     
+                except Exception as e:
+                    logger.error(f"Error sending password reset email to {email}: {str(e)}")
+                    messages.error(request, 'Failed to send OTP email. Please try again later.')
+                    
+                    # In development, show OTP for testing
+                    if settings.DEBUG:
+                        messages.info(request, f'[DEBUG] OTP for {email}: {otp_code}')
+                        return redirect('verify_otp', user_id=user.id)
+                    
             except CustomUser.DoesNotExist:
-                messages.error(request, 'No account found with this email address.')
+                # Don't reveal if email exists for security
+                messages.success(request, 'If an account exists with this email, you will receive an OTP shortly.')
+                return redirect('login')
+            except Exception as e:
+                logger.error(f"Error in forgot_password_view: {str(e)}")
+                messages.error(request, 'An error occurred. Please try again.')
     else:
         form = ForgotPasswordForm()
     

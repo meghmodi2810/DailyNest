@@ -9,6 +9,9 @@ urlpatterns = [
     path('forgot-password/', views.forgot_password_view, name='forgot_password'),
     path('verify-otp/<int:user_id>/', views.verify_otp_view, name='verify_otp'),
     path('reset-password/<int:user_id>/', views.reset_password_view, name='reset_password'),
+    path('verify-email/<int:user_id>/', views.verify_email_view, name='verify_email'),
+    path('verify-email/<int:user_id>/<uuid:token>/', views.verify_email_view, name='verify_email_with_token'),
+    path('resend-verification/<int:user_id>/', views.resend_verification_email, name='resend_verification'),
     
     # Dashboard URLs
     path('', views.dashboard, name='dashboard'),

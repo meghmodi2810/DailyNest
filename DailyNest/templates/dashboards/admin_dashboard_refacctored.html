@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DailyNest Caregiver Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 sm:p-6 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <header class="flex flex-col sm:flex-row justify-between items-center mb-6 p-4 bg-white rounded-2xl shadow-md">
+            <h1 class="text-3xl font-bold text-gray-800">DailyNest Caregiver Dashboard</h1>
+            <div class="mt-4 sm:mt-0">
+                <span class="text-lg text-gray-600">Viewing data for:</span>
+                <span class="text-lg font-semibold text-blue-600 ml-2">Jane Doe</span>
+            </div>
+        </header>
+
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-2xl shadow-md border-t-4 border-blue-500">
+                <p class="text-gray-500 font-medium">Tasks Completed (Today)</p>
+                <p class="text-3xl font-bold text-gray-900 mt-2">12/15</p>
+                <p class="text-sm text-gray-400 mt-1">80% completion rate</p>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-md border-t-4 border-green-500">
+                <p class="text-gray-500 font-medium">Mood (Last 7 Days)</p>
+                <p class="text-3xl font-bold text-gray-900 mt-2">Mostly Happy</p>
+                <p class="text-sm text-gray-400 mt-1">Based on journal entries</p>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-md border-t-4 border-yellow-500">
+                <p class="text-gray-500 font-medium">Gaming Score (Memory)</p>
+                <p class="text-3xl font-bold text-gray-900 mt-2">95%</p>
+                <p class="text-sm text-gray-400 mt-1">Average score last 3 games</p>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-md border-t-4 border-purple-500">
+                <p class="text-gray-500 font-medium">Therapy Sessions</p>
+                <p class="text-3xl font-bold text-gray-900 mt-2">2 per week</p>
+                <p class="text-sm text-gray-400 mt-1">Consistent for 3 months</p>
+            </div>
+        </div>
+
+        <!-- Main Chart Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-2xl shadow-md flex flex-col items-center justify-center">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Mood History (Last 30 Days)</h2>
+                <canvas id="moodChart" class="w-full h-64"></canvas>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-md flex flex-col items-center justify-center">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Task Completion Rate</h2>
+                <canvas id="taskCompletionChart" class="w-full h-64"></canvas>
+            </div>
+        </div>
+
+        <!-- Detailed Reports Section -->
+        <div class="bg-white p-6 rounded-2xl shadow-md">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Detailed Reports</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Journal Entries Mockup -->
+                <div class="rounded-xl border p-4">
+                    <h3 class="text-xl font-medium text-gray-700 mb-2">Recent Journal Entries</h3>
+                    <ul class="space-y-3">
+                        <li class="p-3 bg-gray-50 rounded-lg">
+                            <p class="text-sm text-gray-800 font-semibold">"Today was a great day, I felt very happy at school."</p>
+                            <span class="text-xs text-gray-500">June 29, 2025 - Mood: Happy</span>
+                        </li>
+                        <li class="p-3 bg-gray-50 rounded-lg">
+                            <p class="text-sm text-gray-800 font-semibold">"I was a little upset when the routine changed, but I took deep breaths."</p>
+                            <span class="text-xs text-gray-500">June 28, 2025 - Mood: Anxious</span>
+                        </li>
+                        <li class="p-3 bg-gray-50 rounded-lg">
+                            <p class="text-sm text-gray-800 font-semibold">"I enjoyed the memory game. I got a new high score!"</p>
+                            <span class="text-xs text-gray-500">June 27, 2025 - Mood: Excited</span>
+                        </li>
+                    </ul>
+                </div>
+                
+                <!-- Game Performance Mockup -->
+                <div class="rounded-xl border p-4">
+                    <h3 class="text-xl font-medium text-gray-700 mb-2">Game Performance</h3>
+                    <div class="space-y-4">
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <p class="text-sm font-semibold text-gray-800">Memory Boosters</p>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+                                <div class="bg-yellow-400 h-2.5 rounded-full" style="width: 85%"></div>
+                            </div>
+                            <span class="text-xs text-gray-500 mt-1 block">85% average score</span>
+                        </div>
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <p class="text-sm font-semibold text-gray-800">Emotion Recognition</p>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+                                <div class="bg-red-400 h-2.5 rounded-full" style="width: 60%"></div>
+                            </div>
+                            <span class="text-xs text-gray-500 mt-1 block">60% average score</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Mock data for charts
+            const moodData = {
+                labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                datasets: [{
+                    label: 'Mood Rating (1-5)',
+                    data: [3.5, 4.0, 3.8, 4.2],
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            };
+
+            const taskCompletionData = {
+                labels: ['Completed', 'Incomplete'],
+                datasets: [{
+                    data: [80, 20],
+                    backgroundColor: ['rgb(52, 211, 153)', 'rgb(255, 99, 132)'],
+                    hoverOffset: 4
+                }]
+            };
+
+            // Options for charts
+            const chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            };
+
+            // Render Mood History Chart
+            const moodCtx = document.getElementById('moodChart').getContext('2d');
+            new Chart(moodCtx, {
+                type: 'line',
+                data: moodData,
+                options: {
+                    ...chartOptions,
+                    scales: {
+                        y: {
+                            min: 1,
+                            max: 5,
+                            title: {
+                                display: true,
+                                text: 'Mood Rating'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Render Task Completion Pie Chart
+            const taskCtx = document.getElementById('taskCompletionChart').getContext('2d');
+            new Chart(taskCtx, {
+                type: 'doughnut',
+                data: taskCompletionData,
+                options: chartOptions
+            });
+        });
+    </script>
+</body>
+</html>

@@ -5,7 +5,7 @@ from django.core.validators import RegexValidator
 from django.contrib.auth.hashers import make_password
 
 class CustomUser(AbstractUser):
-    """Custom User model with caregiver mode support"""
+    """Custom User model with caregiver mode and email verification support"""
     ROLE_CHOICES = [
         ('admin', 'Admin'),
         ('autistic_person', 'Autistic Person'),
@@ -15,6 +15,24 @@ class CustomUser(AbstractUser):
     email = models.EmailField(unique=True, help_text="Email address for login")
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='autistic_person')
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    # Email verification fields
+    is_email_verified = models.BooleanField(
+        default=False,
+        help_text="Whether the email has been verified"
+    )
+    email_verification_token = models.UUIDField(
+        default=None,
+        null=True,
+        blank=True,
+        editable=False,
+        help_text="Token for email verification"
+    )
+    email_verification_sent_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the verification email was sent"
+    )
     
     # Caregiver mode fields
     caregiver_pin = models.CharField(max_length=128, blank=True, null=True, help_text="6-digit PIN for caregiver mode access")

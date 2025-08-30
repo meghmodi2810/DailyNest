@@ -1,7 +1,10 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import authenticate
-from .models import CustomUser, CareNote, PasswordResetOTP, ScheduledNote, CareRelationship, UserPreference
+from django.contrib.auth.password_validation import validate_password, password_validators_help_text_html
+from django.core.exceptions import ValidationError
+from .models import (CustomUser, CareNote, PasswordResetOTP, ScheduledNote, 
+                     CareRelationship, UserPreference)
 import uuid
 from datetime import datetime, timedelta
 
@@ -21,13 +24,6 @@ class CustomUserRegistrationForm(UserCreationForm):
             'placeholder': 'Enter your email address',
             'required': True
         })
-    )
-    role = forms.ChoiceField(
-        choices=[
-            ('autistic_person', 'Autistic Person'),
-        ],
-        widget=forms.HiddenInput(),
-        initial='autistic_person'
     )
     caregiver_email = forms.EmailField(
         required=False,
@@ -67,7 +63,8 @@ class CustomUserRegistrationForm(UserCreationForm):
             'class': 'form-control',
             'placeholder': 'Enter password',
             'required': True
-        })
+        }),
+        help_text="Password must be at least 8 characters long and not too common. " + password_validators_help_text_html()
     )
     password2 = forms.CharField(
         label='Confirm Password',
@@ -80,14 +77,44 @@ class CustomUserRegistrationForm(UserCreationForm):
 
     class Meta:
         model = CustomUser
-        fields = ('name', 'email', 'role', 'password1', 'password2')
+        fields = ('name', 'email', 'password1', 'password2')
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if CustomUser.objects.filter(email=email).exists():
+            raise ValidationError("A user with this email already exists.")
+        return email
+
+    def clean_password1(self):
+        password1 = self.cleaned_data.get('password1')
+        if password1:
+            try:
+                # Create a temporary user instance for validation
+                user = CustomUser(
+                    email=self.cleaned_data.get('email', ''),
+                    name=self.cleaned_data.get('name', ''),
+                    username=self.cleaned_data.get('email', '')
+                )
+                validate_password(password1, user)
+            except ValidationError as e:
+                raise ValidationError(e.messages)
+        return password1
+
+    def clean_password2(self):
+        password1 = self.cleaned_data.get('password1')
+        password2 = self.cleaned_data.get('password2')
+        if password1 and password2 and password1 != password2:
+            raise ValidationError("The two password fields didn't match.")
+        return password2
 
     def save(self, commit=True):
         user = super().save(commit=False)
         user.name = self.cleaned_data['name']
         user.email = self.cleaned_data['email']
         user.username = self.cleaned_data['email']  # Use email as username
-        user.role = self.cleaned_data['role']
+        user.role = 'autistic_person'  # Always set role to autistic_person
+        # Set the password properly using set_password method
+        user.set_password(self.cleaned_data['password1'])
         if commit:
             user.save()
         return user
@@ -386,29 +413,59 @@ class AdminUserForm(forms.ModelForm):
             user.save()
         return user
 
+class EmailVerificationForm(forms.Form):
+    """Form for email verification during registration"""
+    verification_code = forms.CharField(
+        max_length=6,
+        min_length=6,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control text-center',
+            'placeholder': '000000',
+            'pattern': '[0-9]{6}',
+            'maxlength': '6',
+            'required': True,
+            'style': 'font-size: 1.5rem; letter-spacing: 0.5rem;'
+        }),
+        help_text="Enter the 6-digit verification code sent to your email"
+    )
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+    def clean_verification_code(self):
+        code = self.cleaned_data.get('verification_code')
+        if not self.user or not self.user.email_verification_token:
+            raise forms.ValidationError("Invalid verification request.")
+        
+        # Check if code matches and is not expired (24 hours)
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        if str(self.user.email_verification_token)[:6] != code:
+            raise forms.ValidationError("Invalid verification code.")
+            
+        if self.user.email_verification_sent_at < (timezone.now() - timedelta(hours=24)):
+            raise forms.ValidationError("Verification code has expired. Please request a new one.")
+            
+        return code
+
 class UserPreferenceForm(forms.ModelForm):
     """Form for updating user preferences including emotion check settings"""
     class Meta:
         model = UserPreference
-        fields = [
-            'theme', 'font_size', 'reduce_animations', 'high_contrast_mode', 
-            'text_to_speech', 'emotion_check_interval', 'skip_emotion_checks'
-        ]
+        fields = ['theme', 'font_size', 'reduce_animations', 'high_contrast_mode', 
+                 'text_to_speech', 'emotion_check_interval', 'skip_emotion_checks']
         widgets = {
-            'theme': forms.Select(attrs={'class': 'form-control'}),
-            'font_size': forms.Select(attrs={'class': 'form-control'}),
-            'emotion_check_interval': forms.Select(attrs={'class': 'form-control'}),
+            'theme': forms.Select(attrs={'class': 'form-select'}),
+            'font_size': forms.Select(attrs={'class': 'form-select'}),
             'reduce_animations': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'high_contrast_mode': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'text_to_speech': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'emotion_check_interval': forms.Select(attrs={'class': 'form-select'}),
             'skip_emotion_checks': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
-        labels = {
-            'theme': 'Color Theme',
-            'font_size': 'Font Size',
-            'reduce_animations': 'Reduce Animations (Autism-friendly)',
-            'high_contrast_mode': 'High Contrast Mode',
-            'text_to_speech': 'Text-to-Speech',
-            'emotion_check_interval': 'Emotion Check Frequency',
-            'skip_emotion_checks': 'Disable All Emotion Checks',
-        }
+        
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['emotion_check_interval'].help_text = 'How often to prompt for emotion checks'
