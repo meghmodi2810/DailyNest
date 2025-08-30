@@ -140,40 +140,6 @@
         </div>
     </div>
 
-    <!-- Upcoming Notes -->
-    <div class="card">
-        <h3><i class="fas fa-sticky-note"></i> Upcoming Notes</h3>
-        <div class="notes-list">
-            {% for note in upcoming_notes %}
-                <div class="note-card {% if note.is_important %}important{% endif %}">
-                    <div class="note-header">
-                        <h4>{{ note.title }}</h4>
-                        <span class="note-time">
-                            <i class="far fa-clock"></i> 
-                            {{ note.scheduled_for|time:"g:i A" }}
-                        </span>
-                    </div>
-                    {% if note.description %}
-                        <p class="note-description">{{ note.description|truncatewords:20 }}</p>
-                    {% endif %}
-                    <div class="note-footer">
-                        <span class="note-date">{{ note.scheduled_for|date:"M d, Y" }}</span>
-                        {% if note.caregiver %}
-                            <span class="note-caretaker">
-                                <i class="fas fa-user-nurse"></i> {{ note.caregiver.name }}
-                            </span>
-                        {% endif %}
-                    </div>
-                </div>
-            {% empty %}
-                <div class="empty-state">
-                    <i class="far fa-smile"></i>
-                    <p>No upcoming notes. Check back later for updates!</p>
-                </div>
-            {% endfor %}
-        </div>
-    </div>
-
     <!-- Upcoming Activities -->
     <div class="card">
         <h3><i class="fas fa-calendar-check"></i> Upcoming Activities</h3>
@@ -213,7 +179,7 @@
     </div>
 
     <!-- Daily Wellness Tips -->
-    <div class="card wellness-tips-card">
+    <div class="card wellness-tips-card full-width">
         <div class="wellness-header">
             <div class="wellness-icon">
                 <i class="fas fa-spa"></i>
@@ -280,6 +246,62 @@
                     <div class="tip-badge">Physical Wellness</div>
                 </div>
             </div>
+            
+            <div class="tip-card" data-tip="4">
+                <div class="tip-visual">
+                    <div class="tip-icon sensory">
+                        <i class="fas fa-headphones"></i>
+                    </div>
+                    <div class="tip-animation sound-animation"></div>
+                </div>
+                <div class="tip-details">
+                    <h4>Sensory Break</h4>
+                    <p>Use noise-canceling headphones or find a quiet space when feeling overstimulated.</p>
+                    <div class="tip-badge">Sensory Support</div>
+                </div>
+            </div>
+            
+            <div class="tip-card" data-tip="5">
+                <div class="tip-visual">
+                    <div class="tip-icon routine">
+                        <i class="fas fa-list-check"></i>
+                    </div>
+                    <div class="tip-animation check-animation"></div>
+                </div>
+                <div class="tip-details">
+                    <h4>Create Structure</h4>
+                    <p>Make a simple daily checklist to help organize your day and reduce anxiety.</p>
+                    <div class="tip-badge">Organization</div>
+                </div>
+            </div>
+            
+            <div class="tip-card" data-tip="6">
+                <div class="tip-visual">
+                    <div class="tip-icon comfort">
+                        <i class="fas fa-teddy-bear"></i>
+                    </div>
+                    <div class="tip-animation comfort-animation"></div>
+                </div>
+                <div class="tip-details">
+                    <h4>Comfort Items</h4>
+                    <p>Keep a favorite comfort object nearby for emotional regulation and security.</p>
+                    <div class="tip-badge">Emotional Support</div>
+                </div>
+            </div>
+            
+            <div class="tip-card" data-tip="7">
+                <div class="tip-visual">
+                    <div class="tip-icon hydration">
+                        <i class="fas fa-glass-water"></i>
+                    </div>
+                    <div class="tip-animation water-animation"></div>
+                </div>
+                <div class="tip-details">
+                    <h4>Stay Hydrated</h4>
+                    <p>Drink water regularly throughout the day to maintain focus and energy levels.</p>
+                    <div class="tip-badge">Health</div>
+                </div>
+            </div>
         </div>
         
         <div class="tips-navigation">
@@ -291,6 +313,10 @@
                 <span class="dot" onclick="currentTip(1)"></span>
                 <span class="dot" onclick="currentTip(2)"></span>
                 <span class="dot" onclick="currentTip(3)"></span>
+                <span class="dot" onclick="currentTip(4)"></span>
+                <span class="dot" onclick="currentTip(5)"></span>
+                <span class="dot" onclick="currentTip(6)"></span>
+                <span class="dot" onclick="currentTip(7)"></span>
             </div>
             <button class="nav-btn next-btn" onclick="changeTip(1)">
                 <i class="fas fa-chevron-right"></i>
@@ -1145,6 +1171,11 @@
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         border: none;
+    }
+
+    .full-width {
+        grid-column: 1 / -1;
+        max-width: none;
         overflow: hidden;
         position: relative;
     }

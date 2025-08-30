@@ -389,6 +389,10 @@ def autistic_dashboard(request):
     from .models import CareRelationship, ScheduledNote, DailyPlannerActivity
     from datetime import datetime, timedelta
     
+    # Clear caregiver mode session if accessing autistic dashboard directly
+    if 'caregiver_mode' in request.session:
+        del request.session['caregiver_mode']
+    
     recent_emotions = EmotionRecord.objects.filter(user=request.user).order_by('-timestamp')[:5]
     recent_chats = ChatMessage.objects.filter(sender='user').order_by('-timestamp')[:5]
     
@@ -1813,8 +1817,10 @@ def caregiver_mode_login(request):
             return render(request, 'caregiver/login.html')
         
         if user.check_caregiver_pin(pin):
-            # Store caregiver mode session
+            # Store caregiver mode session with timestamp
             request.session['caregiver_mode'] = True
+            request.session['caregiver_mode_timestamp'] = timezone.now().timestamp()
+            request.session['caregiver_mode_user_id'] = user.id
             return redirect('caregiver_mode_dashboard')
         else:
             messages.error(request, 'Invalid caregiver mode PIN.')
@@ -1825,9 +1831,37 @@ def caregiver_mode_login(request):
 @login_required
 def caregiver_mode_dashboard(request):
     """Caregiver mode dashboard showing journals, emotions, and reports"""
-    # Check if user is in caregiver mode
+    # Check if user is in caregiver mode with proper session validation
     if not request.session.get('caregiver_mode'):
         return redirect('caregiver_mode_login')
+    
+    # Validate session integrity
+    session_user_id = request.session.get('caregiver_mode_user_id')
+    session_timestamp = request.session.get('caregiver_mode_timestamp')
+    
+    # Check if session belongs to current user
+    if session_user_id != request.user.id:
+        if 'caregiver_mode' in request.session:
+            del request.session['caregiver_mode']
+        if 'caregiver_mode_timestamp' in request.session:
+            del request.session['caregiver_mode_timestamp']
+        if 'caregiver_mode_user_id' in request.session:
+            del request.session['caregiver_mode_user_id']
+        return redirect('caregiver_mode_login')
+    
+    # Check session timeout (30 minutes)
+    if session_timestamp:
+        current_time = timezone.now().timestamp()
+        session_age = current_time - session_timestamp
+        if session_age > 1800:  # 30 minutes in seconds
+            if 'caregiver_mode' in request.session:
+                del request.session['caregiver_mode']
+            if 'caregiver_mode_timestamp' in request.session:
+                del request.session['caregiver_mode_timestamp']
+            if 'caregiver_mode_user_id' in request.session:
+                del request.session['caregiver_mode_user_id']
+            messages.info(request, 'Caregiver mode session expired. Please login again.')
+            return redirect('caregiver_mode_login')
     
     user = request.user
     
@@ -1870,8 +1904,15 @@ def caregiver_mode_dashboard(request):
 @login_required
 def caregiver_mode_logout(request):
     """Logout from caregiver mode"""
+    # Clear all caregiver mode session data
     if 'caregiver_mode' in request.session:
         del request.session['caregiver_mode']
+    if 'caregiver_mode_timestamp' in request.session:
+        del request.session['caregiver_mode_timestamp']
+    if 'caregiver_mode_user_id' in request.session:
+        del request.session['caregiver_mode_user_id']
+    
+    messages.success(request, 'Successfully logged out of caregiver mode.')
     return redirect('autistic_dashboard')
 
 # Caregiver Notes Views

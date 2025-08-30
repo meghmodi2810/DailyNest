@@ -18,6 +18,9 @@
             <button onclick="location.href='{% url 'schedule_note_view' %}'" class="btn-secondary">
                 <i class="fas fa-clock"></i> Schedule Note
             </button>
+            <button onclick="location.href='{% url 'caregiver_mode_logout' %}'" class="btn-danger">
+                <i class="fas fa-sign-out-alt"></i> Close Caregiver Mode
+            </button>
         </div>
     </div>
 
@@ -551,6 +554,28 @@ body[data-theme="dark"] .card-actions {
 
 .btn-text:hover {
     color: #2563eb;
+}
+
+.btn-danger {
+    background: #dc2626;
+    color: white;
+    border: 1px solid #dc2626;
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--border-radius);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+.btn-danger:hover {
+    background: #b91c1c;
+    border-color: #b91c1c;
+    transform: translateY(-1px);
 }
 
 .empty-state {
