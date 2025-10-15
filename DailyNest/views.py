@@ -1888,6 +1888,40 @@ def caregiver_mode_dashboard(request):
         status__in=['scheduled', 'in_progress']
     ).order_by('scheduled_date', 'scheduled_time')[:10]
     
+    # Calculate activity statistics
+    total_activities = DailyPlannerActivity.objects.filter(assigned_to=user).count()
+    scheduled_today = DailyPlannerActivity.objects.filter(
+        assigned_to=user,
+        scheduled_date=today,
+        status='scheduled'
+    ).count()
+    completed_activities = DailyPlannerActivity.objects.filter(
+        assigned_to=user,
+        status='completed'
+    ).count()
+    due_soon = DailyPlannerActivity.objects.filter(
+        assigned_to=user,
+        scheduled_date__lte=today + timedelta(days=1),
+        scheduled_date__gte=today,
+        status__in=['scheduled', 'in_progress']
+    ).count()
+    
+    # Weekly journal entries
+    weekly_journals = JournalEntry.objects.filter(
+        user=user,
+        created_at__gte=week_ago
+    ).count()
+    
+    # Get care relationships for individuals under care count
+    try:
+        from .models import CareRelationship
+        individuals_count = CareRelationship.objects.filter(caregiver=user).count()
+    except:
+        individuals_count = 0
+    
+    # Recent journal entries for activity feed
+    recent_journal_entries = JournalEntry.objects.filter(user=user).order_by('-created_at')[:5]
+    
     context = {
         'user': user,
         'recent_journals': recent_journals,
@@ -1897,6 +1931,17 @@ def caregiver_mode_dashboard(request):
         'today': today,
         'journal_count': JournalEntry.objects.filter(user=user).count(),
         'emotion_count': EmotionRecord.objects.filter(user=user).count(),
+        # Activity statistics
+        'total_activities': total_activities,
+        'scheduled_today': scheduled_today,
+        'completed_activities': completed_activities,
+        'due_soon': due_soon,
+        # Weekly stats
+        'total_weekly_entries': weekly_journals,
+        'total_notes_completed': 0,  # Will be updated when notes system is implemented
+        'total_notes': 0,
+        'individuals_count': individuals_count,
+        'recent_journal_entries': recent_journal_entries,
     }
     
     return render(request, 'caregiver/dashboard.html', context)
@@ -2283,10 +2328,10 @@ def update_daily_activity(request, activity_id):
 @login_required
 def daily_planner_list(request):
     """View all daily planner activities"""
-    # Get activities created by this caregiver
+    # Get activities for the current user (both created by and assigned to)
     activities = DailyPlannerActivity.objects.filter(
-        created_by=request.user
-    ).select_related('assigned_to').order_by('scheduled_date', 'scheduled_time')
+        Q(assigned_to=request.user) | Q(created_by=request.user)
+    ).select_related('assigned_to', 'created_by').order_by('scheduled_date', 'scheduled_time')
     
     # Get upcoming activities (next 7 days)
     from datetime import date, timedelta
@@ -2309,6 +2354,32 @@ def daily_planner_list(request):
     
     # Get individuals under care
     autistic_users = CustomUser.objects.filter(role='autistic_person')
+    
+    # If this is an AJAX request, return JSON
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.GET.get('format') == 'json':
+        activities_data = []
+        for activity in activities:
+            activities_data.append({
+                'id': activity.id,
+                'title': activity.title,
+                'description': activity.description,
+                'activity_type': activity.activity_type,
+                'scheduled_date': activity.scheduled_date.strftime('%Y-%m-%d'),
+                'scheduled_time': activity.scheduled_time.strftime('%H:%M') if activity.scheduled_time else '',
+                'duration_minutes': activity.duration_minutes,
+                'status': activity.status,
+                'priority': activity.priority,
+                'assigned_to_name': activity.assigned_to.name if activity.assigned_to else '',
+                'created_by_name': activity.created_by.name if activity.created_by else '',
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'activities': activities_data,
+            'total_activities': total_activities,
+            'completed_count': completed_count,
+            'pending_count': pending_count,
+        })
     
     context = {
         'activities': activities,

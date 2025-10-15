@@ -103,15 +103,6 @@
             </div>
             {% endfor %}
         </div>
-    {% else %}
-        <div class="empty-state">
-            <i class="fas fa-user-friends"></i>
-            <h2>No Individuals Assigned</h2>
-            <p>You currently don't have any individuals assigned to your care.</p>
-            <button onclick="location.href='{% url 'manage_care_relationships' %}'" class="btn-primary">
-                Add Individual
-            </button>
-        </div>
     {% endif %}
 
     <!-- Daily Planner Section -->
@@ -130,7 +121,7 @@
                     <i class="fas fa-calendar-check"></i>
                 </div>
                 <div class="stat-info">
-                    <span class="stat-value" id="totalActivities">0</span>
+                    <span class="stat-value" id="totalActivities">{{ total_activities|default:"0" }}</span>
                     <span class="stat-label">Total Activities</span>
                 </div>
             </div>
@@ -139,7 +130,7 @@
                     <i class="fas fa-clock"></i>
                 </div>
                 <div class="stat-info">
-                    <span class="stat-value" id="scheduledActivities">0</span>
+                    <span class="stat-value" id="scheduledActivities">{{ scheduled_today|default:"0" }}</span>
                     <span class="stat-label">Scheduled Today</span>
                 </div>
             </div>
@@ -148,7 +139,7 @@
                     <i class="fas fa-check-circle"></i>
                 </div>
                 <div class="stat-info">
-                    <span class="stat-value" id="completedActivities">0</span>
+                    <span class="stat-value" id="completedActivities">{{ completed_activities|default:"0" }}</span>
                     <span class="stat-label">Completed</span>
                 </div>
             </div>
@@ -157,7 +148,7 @@
                     <i class="fas fa-bell"></i>
                 </div>
                 <div class="stat-info">
-                    <span class="stat-value" id="upcomingActivities">0</span>
+                    <span class="stat-value" id="upcomingActivities">{{ due_soon|default:"0" }}</span>
                     <span class="stat-label">Due Soon</span>
                 </div>
             </div>
@@ -197,7 +188,7 @@
                     <i class="fas fa-book"></i>
                 </div>
                 <div class="stat-info">
-                    <span class="stat-value">{{ total_weekly_entries }}</span>
+                    <span class="stat-value">{{ total_weekly_entries|default:"0" }}</span>
                     <span class="stat-label">Journal Entries This Week</span>
                 </div>
             </div>
@@ -206,8 +197,8 @@
                     <i class="fas fa-tasks"></i>
                 </div>
                 <div class="stat-info">
-                    <span class="stat-value">{{ total_notes_completed }}/{{ total_notes }}</span>
-                    <span class="stat-label">Notes Completed Today</span>
+                    <span class="stat-value">{{ completed_activities|default:"0" }}/{{ total_activities|default:"0" }}</span>
+                    <span class="stat-label">Activities Completed</span>
                 </div>
             </div>
             <div class="stat-card">
@@ -215,7 +206,7 @@
                     <i class="fas fa-users"></i>
                 </div>
                 <div class="stat-info">
-                    <span class="stat-value">{{ autistic_users|length }}</span>
+                    <span class="stat-value">{{ individuals_count|default:"0" }}</span>
                     <span class="stat-label">Individuals Under Care</span>
                 </div>
             </div>
@@ -557,25 +548,93 @@ body[data-theme="dark"] .card-actions {
 }
 
 .btn-danger {
-    background: #dc2626;
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
     color: white;
-    border: 1px solid #dc2626;
-    padding: 0.75rem 1.5rem;
-    border-radius: var(--border-radius);
+    border: none;
+    padding: 0.875rem 1.75rem;
+    border-radius: 12px;
     font-size: 0.875rem;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.75rem;
     transition: all 0.3s ease;
     text-decoration: none;
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+    position: relative;
+    overflow: hidden;
 }
 
 .btn-danger:hover {
-    background: #b91c1c;
-    border-color: #b91c1c;
-    transform: translateY(-1px);
+    background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
+}
+
+.btn-danger:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    color: white;
+    border: none;
+    padding: 0.875rem 1.75rem;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+    color: white;
+    border: none;
+    padding: 0.875rem 1.75rem;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    box-shadow: 0 4px 12px rgba(100, 116, 139, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-secondary:hover {
+    background: linear-gradient(135deg, #475569 0%, #334155 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(100, 116, 139, 0.4);
+}
+
+.btn-secondary:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(100, 116, 139, 0.3);
 }
 
 .empty-state {
@@ -1121,66 +1180,82 @@ function loadDailyActivities() {
     const container = document.getElementById('activitiesContainer');
     const loading = document.getElementById('activitiesLoading');
     
-    loading.style.display = 'block';
+    if (loading) loading.style.display = 'block';
     
-    fetch('/daily-planner/list/')
+    fetch('/daily-planner/list/?format=json')
         .then(response => response.json())
         .then(data => {
-            loading.style.display = 'none';
-            displayActivities(data.activities);
-            updateActivityStats(data.stats);
+            if (loading) loading.style.display = 'none';
+            if (data.success) {
+                displayActivities(data.activities);
+                updateActivityStats(data);
+            } else {
+                console.error('Failed to load activities:', data.error);
+                if (container) {
+                    container.innerHTML = '<div class="error-state"><p>Failed to load activities. Please refresh the page.</p></div>';
+                }
+            }
         })
         .catch(error => {
-            loading.style.display = 'none';
             console.error('Error loading activities:', error);
-            container.innerHTML = '<div class="error-state"><p>Error loading activities</p></div>';
+            if (loading) loading.style.display = 'none';
+            if (container) {
+                container.innerHTML = '<div class="error-state"><p>Error loading activities. Please check your connection.</p></div>';
+            }
         });
+}
+
+function updateActivityStats(data) {
+    const totalEl = document.getElementById('totalActivities');
+    const completedEl = document.getElementById('completedActivities');
+    
+    if (totalEl) totalEl.textContent = data.total_activities || 0;
+    if (completedEl) completedEl.textContent = data.completed_count || 0;
 }
 
 function displayActivities(activities) {
     const container = document.getElementById('activitiesContainer');
+    if (!container) return;
     
-    if (activities.length === 0) {
+    if (!activities || activities.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
-                <i class="fas fa-calendar-alt"></i>
-                <h3>No Activities Scheduled</h3>
-                <p>Start by scheduling your first daily activity</p>
+                <i class="fas fa-calendar-plus"></i>
+                <p>No activities found. Create your first activity!</p>
                 <button onclick="openActivityModal()" class="btn-primary">
-                    <i class="fas fa-plus"></i> Schedule Activity
+                    <i class="fas fa-plus"></i> Add Activity
                 </button>
             </div>
         `;
         return;
     }
     
-    container.innerHTML = activities.map(activity => `
-        <div class="activity-card" data-status="${activity.status}">
-            <div class="activity-icon">
-                <i class="${activity.icon}"></i>
-            </div>
-            <div class="activity-details">
+    let html = '<div class="activities-grid">';
+    activities.forEach(activity => {
+        const statusClass = activity.status.toLowerCase();
+        const priorityClass = activity.priority.toLowerCase();
+        
+        html += `
+            <div class="activity-card ${statusClass}">
                 <div class="activity-header">
                     <h4>${activity.title}</h4>
-                    <span class="activity-priority priority-${activity.priority}">${activity.priority}</span>
+                    <span class="activity-priority ${priorityClass}">${activity.priority}</span>
                 </div>
-                <p class="activity-description">${activity.description}</p>
+                <p class="activity-description">${activity.description || 'No description'}</p>
                 <div class="activity-meta">
-                    <span><i class="fas fa-user"></i> ${activity.assigned_to_name}</span>
+                    <span><i class="fas fa-calendar"></i> ${activity.scheduled_date}</span>
                     <span><i class="fas fa-clock"></i> ${activity.scheduled_time}</span>
-                    <span><i class="fas fa-hourglass-half"></i> ${activity.duration_minutes} min</span>
+                    <span><i class="fas fa-user"></i> ${activity.assigned_to_name}</span>
+                </div>
+                <div class="activity-status">
+                    <span class="status-badge ${statusClass}">${activity.status}</span>
                 </div>
             </div>
-            <div class="activity-actions">
-                <button onclick="updateActivityStatus(${activity.id}, 'completed')" class="btn-small btn-success" title="Mark Complete">
-                    <i class="fas fa-check"></i>
-                </button>
-                <button onclick="deleteActivity(${activity.id})" class="btn-small btn-danger" title="Delete">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        </div>
-    `).join('');
+        `;
+    });
+    html += '</div>';
+    
+    container.innerHTML = html;
 }
 
 function updateActivityStats(stats) {
